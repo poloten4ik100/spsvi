@@ -10,6 +10,24 @@
 #define SERVO_180 5243
 #define SERVO_0 1050
 
+/*
+I2C адресс L3G4200D
+HEX: 0x69
+int: 105
+110100xb, x=1 => SDO лог. 1 => LSB = 1
+*/
+uint8_t L3G4200D_Address = 0x69;
+
+#define CTRL_REG1 0x20
+#define CTRL_REG2 0x21
+#define CTRL_REG3 0x22
+#define CTRL_REG4 0x23
+#define CTRL_REG5 0x24
+
+int x;
+int y;
+int z;
+
 char buf[32]={0};
 int counter=0;
 
@@ -39,6 +57,7 @@ void set_pos(uint8_t pos)
 
 GPIO_InitTypeDef GPIO_InitStruct;
 USART_InitTypeDef USART_InitStruct;
+I2C_InitTypeDef I2C_InitStructure;
 
 void InitUSART(void)
 {
@@ -68,6 +87,110 @@ void InitUSART(void)
   USART_InitStruct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx; //Включен передатчик и приемник USART1
   USART_Init(USART1, &USART_InitStruct); //Заданные настройки сохраняем в регистрах USART1
   USART_Cmd(USART1, ENABLE); //Включаем USART1
+}
+
+void InitI2C(void)
+{
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE); //Включаем тактирование GPIOB
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE); //Включаем тактирование I2C
+  
+  I2C_StructInit(&I2C_InitStructure);
+  I2C_InitStructure.I2C_ClockSpeed = 100000; // частота тактового сигнала (100кГц), максимум – 400 КГц
+  I2C_InitStructure.I2C_Mode = I2C_Mode_I2C; // Режим работы
+  I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2; // настройки для работы в быстром режиме
+  I2C_InitStructure.I2C_OwnAddress1 = 0x15; // собственный адрес устройства
+  I2C_InitStructure.I2C_Ack = I2C_Ack_Disable; // включено или нет использование бита подтверждения Ack
+  I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit; // выбор формата адреса, 7 бит или 10 бит
+  I2C_Init(I2C1, &I2C_InitStructure);
+
+  GPIO_InitStruct.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
+  GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;		
+  GPIO_InitStruct.GPIO_Speed = GPIO_Speed_2MHz;
+  GPIO_InitStruct.GPIO_OType = GPIO_OType_OD;
+  GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_Init(GPIOB, &GPIO_InitStruct);
+  GPIO_PinAFConfig(GPIOB, GPIO_PinSource6, GPIO_AF_I2C1);
+  GPIO_PinAFConfig(GPIOB, GPIO_PinSource7, GPIO_AF_I2C1);
+  I2C_Cmd(I2C1, ENABLE);
+}
+
+void I2C_single_write(uint8_t HW_address, uint8_t addr, uint8_t data)
+{
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+  I2C_GenerateSTART(I2C1, ENABLE);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+  // Шлем адрес устройства
+  I2C_Send7bitAddress(I2C1, HW_address, I2C_Direction_Transmitter);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED));
+  // Шлем адрес нужного регистра
+  I2C_SendData(I2C1, addr);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
+  // Шлем данные в регистр
+  I2C_SendData(I2C1, data);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
+  I2C_GenerateSTOP(I2C1, ENABLE);
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+}
+
+uint8_t I2C_single_read(uint8_t HW_address, uint8_t addr)
+{
+  uint8_t data;
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+  I2C_GenerateSTART(I2C1, ENABLE);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+  I2C_Send7bitAddress(I2C1, HW_address, I2C_Direction_Transmitter);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED));
+  I2C_SendData(I2C1, addr);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
+  I2C_GenerateSTART(I2C1, ENABLE);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+  I2C_Send7bitAddress(I2C1, HW_address, I2C_Direction_Receiver);
+  while(!I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_BYTE_RECEIVED));
+  data = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  I2C_AcknowledgeConfig(I2C1, DISABLE);
+  I2C_GenerateSTOP(I2C1, ENABLE);
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+  return data;
+}
+
+void Init_L3G4200D(void)
+{
+  // CTRL_REG1 (00001111) Скорость оцифровки сигнала 100Гц (Cut-Off 12.5), все оси включены, Power Down - нормальный режим
+  I2C_single_write(L3G4200D_Address,CTRL_REG1,0x0f); 
+  // CTRL_REG2 (00000000) Нормальный режим ФВЧ (сброс чтением HP_RESET_FILTER), частота среза 8Гц (ODR=100Гц)
+  I2C_single_write(L3G4200D_Address,CTRL_REG2,0x00);
+  // CTRL_REG3 (00001000) Вывод состояния Data Ready на DRDY/INT2
+  I2C_single_write(L3G4200D_Address,CTRL_REG3,0x08);
+    // CTRL_REG4 (00001000)  Выбор полной шкалы 250 dps
+  I2C_single_write(L3G4200D_Address,CTRL_REG4,0x00);
+    // CTRL_REG5 (00001000)  откл фильтр фвч и че-то еще
+  I2C_single_write(L3G4200D_Address,CTRL_REG5,0x00);
+}
+
+void getGyroValues(void)
+{
+  uint8_t xMSB = I2C_single_read(L3G4200D_Address, 0x29);
+  uint8_t xLSB = I2C_single_read(L3G4200D_Address, 0x28);
+  x = ((xMSB << 8) | xLSB);
+
+  uint8_t yMSB = I2C_single_read(L3G4200D_Address, 0x2B);
+  uint8_t yLSB = I2C_single_read(L3G4200D_Address, 0x2A);
+  y = ((yMSB << 8) | yLSB);
+
+  uint8_t zMSB = I2C_single_read(L3G4200D_Address, 0x2D);
+  uint8_t zLSB = I2C_single_read(L3G4200D_Address, 0x2C);
+  z = ((zMSB << 8) | zLSB);
+}
+
+// Функция задержки
+void Delay_ms(uint32_t ms)
+{
+  volatile uint32_t nCount;
+  RCC_ClocksTypeDef RCC_Clocks;
+  RCC_GetClocksFreq (&RCC_Clocks);
+  nCount=(RCC_Clocks.HCLK_Frequency/10000)*ms;
+  for (; nCount!=0; nCount--);
 }
 
 void SERVO(void)
@@ -126,10 +249,22 @@ int main()
 {
   InitUSART(); 
   Usart_Transmit_str("START\r\n");
-  SERVO();
+  //SERVO();
+  
+  InitI2C();
+  Init_L3G4200D();
+  
   while(1)
   {
-    
+    getGyroValues();
+    Usart_Transmit_str("X: ");
+    Usart_Transmit(x);
+    Usart_Transmit_str("Y: ");
+    Usart_Transmit(y);
+    Usart_Transmit_str("Z: ");
+    Usart_Transmit(z);
+    Usart_Transmit_str("\r\n");
+    Delay_ms(500);
   }
-  return 0;
+
 }
