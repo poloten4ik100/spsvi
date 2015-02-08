@@ -17,6 +17,8 @@ int: 105
 110100xb, x=1 => SDO лог. 1 => LSB = 1
 */
 uint8_t L3G4200D_Address = 0x69;
+uint8_t L3G4200D_Address_r = 0xD3; // (1-чтение)
+uint8_t L3G4200D_Address_w = 0xD2; 
 
 #define CTRL_REG1 0x20
 #define CTRL_REG2 0x21
@@ -24,9 +26,25 @@ uint8_t L3G4200D_Address = 0x69;
 #define CTRL_REG4 0x23
 #define CTRL_REG5 0x24
 
-int x;
-int y;
-int z;
+int x_g;
+int y_g;
+int z_g;
+
+/*
+I2C адресс ADXL345
+HEX: 0x53
+int: 83
+1010011b
+*/
+uint8_t ADXL345_Address = 0x53;
+uint8_t ADXL345_Address_r = 0xA7; // (1-чтение)
+uint8_t ADXL345_Address_w = 0xA6;
+
+#define POWER_CTL 0x2D
+
+int16_t x_a;
+int16_t y_a;
+int16_t z_a;
 
 char buf[32]={0};
 int counter=0;
@@ -99,7 +117,7 @@ void InitI2C(void)
   I2C_InitStructure.I2C_Mode = I2C_Mode_I2C; // Режим работы
   I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2; // настройки для работы в быстром режиме
   I2C_InitStructure.I2C_OwnAddress1 = 0x15; // собственный адрес устройства
-  I2C_InitStructure.I2C_Ack = I2C_Ack_Disable; // включено или нет использование бита подтверждения Ack
+  I2C_InitStructure.I2C_Ack = I2C_Ack_Enable; // включено или нет использование бита подтверждения Ack
   I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit; // выбор формата адреса, 7 бит или 10 бит
   I2C_Init(I2C1, &I2C_InitStructure);
 
@@ -116,7 +134,7 @@ void InitI2C(void)
 
 void I2C_single_write(uint8_t HW_address, uint8_t addr, uint8_t data)
 {
-  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+  //while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
   I2C_GenerateSTART(I2C1, ENABLE);
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
   // Шлем адрес устройства
@@ -132,55 +150,146 @@ void I2C_single_write(uint8_t HW_address, uint8_t addr, uint8_t data)
   while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
 }
 
-uint8_t I2C_single_read(uint8_t HW_address, uint8_t addr)
+uint8_t I2C_single_read(uint8_t HW_address_w, uint8_t HW_address_r, uint8_t addr)
 {
   uint8_t data;
   while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
   I2C_GenerateSTART(I2C1, ENABLE);
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
-  I2C_Send7bitAddress(I2C1, HW_address, I2C_Direction_Transmitter);
+  I2C_Send7bitAddress(I2C1, HW_address_w, I2C_Direction_Transmitter);
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED));
   I2C_SendData(I2C1, addr);
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
   I2C_GenerateSTART(I2C1, ENABLE);
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
-  I2C_Send7bitAddress(I2C1, HW_address, I2C_Direction_Receiver);
+  I2C_Send7bitAddress(I2C1, HW_address_r, I2C_Direction_Receiver);
   while(!I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_BYTE_RECEIVED));
   data = I2C_ReceiveData(I2C1);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
   I2C_AcknowledgeConfig(I2C1, DISABLE);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
   I2C_GenerateSTOP(I2C1, ENABLE);
   while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
   return data;
 }
 
+// Акселерометр ADXL345
+void Init_ADXL345(void)
+{
+  // POWER_CTL
+  I2C_single_write(ADXL345_Address_w,POWER_CTL,0); 
+  I2C_single_write(ADXL345_Address_w,POWER_CTL,16);
+  I2C_single_write(ADXL345_Address_w,POWER_CTL,8);
+}
+
+// Гироскоп L3G4200D
 void Init_L3G4200D(void)
 {
   // CTRL_REG1 (00001111) Скорость оцифровки сигнала 100Гц (Cut-Off 12.5), все оси включены, Power Down - нормальный режим
-  I2C_single_write(L3G4200D_Address,CTRL_REG1,0x0f); 
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG1,0x0f); 
   // CTRL_REG2 (00000000) Нормальный режим ФВЧ (сброс чтением HP_RESET_FILTER), частота среза 8Гц (ODR=100Гц)
-  I2C_single_write(L3G4200D_Address,CTRL_REG2,0x00);
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG2,0x00);
   // CTRL_REG3 (00001000) Вывод состояния Data Ready на DRDY/INT2
-  I2C_single_write(L3G4200D_Address,CTRL_REG3,0x08);
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG3,0x00);
     // CTRL_REG4 (00001000)  Выбор полной шкалы 250 dps
-  I2C_single_write(L3G4200D_Address,CTRL_REG4,0x00);
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG4,0x30);
     // CTRL_REG5 (00001000)  откл фильтр фвч и че-то еще
-  I2C_single_write(L3G4200D_Address,CTRL_REG5,0x00);
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG5,0x00);
 }
 
 void getGyroValues(void)
 {
-  uint8_t xMSB = I2C_single_read(L3G4200D_Address, 0x29);
-  uint8_t xLSB = I2C_single_read(L3G4200D_Address, 0x28);
-  x = ((xMSB << 8) | xLSB);
+  uint8_t xH;
+  uint8_t xL;
+  uint8_t yH;
+  uint8_t yL;
+  uint8_t zH;
+  uint8_t zL;
+  
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+  I2C_GenerateSTART(I2C1, ENABLE);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+  I2C_Send7bitAddress(I2C1, L3G4200D_Address_w, I2C_Direction_Transmitter);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED));
+  I2C_SendData(I2C1, 0x28);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
+  I2C_GenerateSTART(I2C1, ENABLE);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+  I2C_Send7bitAddress(I2C1, L3G4200D_Address_r, I2C_Direction_Receiver);
+  while(!I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_BYTE_RECEIVED));
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
+  
+  xL = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  xH = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  
+  yL = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  yH = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  
+  zL = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED)); 
+  I2C_AcknowledgeConfig(I2C1, DISABLE);
+  zH = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+   
+  I2C_GenerateSTOP(I2C1, ENABLE);
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
+  
+  x_g = ((xH << 8) | xL);
+  y_g = ((yH << 8) | yL);
+  z_g = ((zH << 8) | zL);
+}
 
-  uint8_t yMSB = I2C_single_read(L3G4200D_Address, 0x2B);
-  uint8_t yLSB = I2C_single_read(L3G4200D_Address, 0x2A);
-  y = ((yMSB << 8) | yLSB);
-
-  uint8_t zMSB = I2C_single_read(L3G4200D_Address, 0x2D);
-  uint8_t zLSB = I2C_single_read(L3G4200D_Address, 0x2C);
-  z = ((zMSB << 8) | zLSB);
+void getAccelValues(void)
+{
+  uint8_t xMSB;
+  uint8_t xLSB;
+  uint8_t yMSB;
+  uint8_t yLSB;
+  uint8_t zMSB;
+  uint8_t zLSB;
+  
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+  I2C_GenerateSTART(I2C1, ENABLE);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+  I2C_Send7bitAddress(I2C1, ADXL345_Address_w, I2C_Direction_Transmitter);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED));
+  I2C_SendData(I2C1, 0x32);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
+  I2C_GenerateSTART(I2C1, ENABLE);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+  I2C_Send7bitAddress(I2C1, ADXL345_Address_r, I2C_Direction_Receiver);
+  while(!I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_BYTE_RECEIVED));
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
+  
+  xLSB = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  xMSB = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  
+  yLSB = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  yMSB = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  
+  zLSB = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  
+  zMSB = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  I2C_AcknowledgeConfig(I2C1, DISABLE);
+  
+  I2C_GenerateSTOP(I2C1, ENABLE);
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
+  
+  x_a = ((xMSB << 8) | xLSB);
+  y_a = ((yMSB << 8) | yLSB);
+  z_a = ((zMSB << 8) | zLSB);
 }
 
 // Функция задержки
@@ -245,26 +354,92 @@ void SERVO(void)
     TIM2->CR1 |= TIM_CR1_CEN;//Старт счета таймера
   }
 
+void reverse(char s[])
+{
+int i, j;
+char c;
+for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
+c = s[i];
+s[i] = s[j];
+s[j] = c;
+}
+}
+
+void itoa(int n, char s[])
+{
+int i, sign;
+if ((sign = n) < 0) //записываем знак 
+n = -n; // делаем n положительным числом 
+i = 0;
+do { //генерируем цифры в обратном порядке 
+s[i++] = n % 10 + '0'; //берем следующую цифру 
+} while ((n /= 10) > 0); // удаляем 
+if (sign < 0)
+s[i++] = '-';
+s[i] = '\0';
+reverse(s);
+}
+
 int main()
 {
+  char str[10]; 
+
   InitUSART(); 
-  Usart_Transmit_str("START\r\n");
+  //Usart_Transmit_str("Start!!!\r\n");
   //SERVO();
   
   InitI2C();
-  Init_L3G4200D();
+  
+  //Init_L3G4200D();
+  
+  Init_ADXL345();
+   
+  //Usart_Transmit_str("OK\r\n");
+    
+  Delay_ms(20);
+  //uint8_t adr = I2C_single_read(0xD3, 0x0F);
+  //Usart_Transmit(adr);
+  /*while(1)
+  {
+    getGyroValues();
+    //Usart_Transmit_str("X: ");
+    Usart_Transmit(y_g);
+    //Usart_Transmit_str("Y: ");
+    //Usart_Transmit_str("Z: ");
+    //Usart_Transmit(z_g);
+    //Usart_Transmit_str("\r\n");
+    Delay_ms(50);
+  }*/
   
   while(1)
   {
-    getGyroValues();
+    getAccelValues();
+    //Usart_Transmit_str("X: ");
+    //sprintf(str, "%d", (int)x_a);
+    //Usart_Transmit_str(str);
+
+    //Usart_Transmit_str("Y: ");
+    //Usart_Transmit(y_a);
+    //deg = (int16_t)(180); 
+   // sprintf(str, "Angle: %d", deg);
+    //Usart_Transmit_str("Z: ");
+    //Usart_Transmit(z);
+    //Usart_Transmit_str(str);
     Usart_Transmit_str("X: ");
-    Usart_Transmit(x);
-    Usart_Transmit_str("Y: ");
-    Usart_Transmit(y);
-    Usart_Transmit_str("Z: ");
-    Usart_Transmit(z);
+    sprintf(str, "%d", x_a);
+    Usart_Transmit_str(str);
+    
+    Usart_Transmit_str(" Y: ");
+    sprintf(str, "%d", y_a);
+    Usart_Transmit_str(str);
+    
+    Usart_Transmit_str(" Z: ");
+    sprintf(str, "%d", z_a);
+    Usart_Transmit_str(str);
+    
     Usart_Transmit_str("\r\n");
-    Delay_ms(500);
+    
+    Delay_ms(300);
   }
 
 }
