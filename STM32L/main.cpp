@@ -10,6 +10,8 @@
 #define SERVO_180 5243
 #define SERVO_0 1050
 
+int j=1,l=0;
+
 /*
 I2C адресс L3G4200D
 HEX: 0x69
@@ -26,9 +28,9 @@ uint8_t L3G4200D_Address_w = 0xD2;
 #define CTRL_REG4 0x23
 #define CTRL_REG5 0x24
 
-int x_g;
-int y_g;
-int z_g;
+int16_t x_g;
+int16_t y_g;
+int16_t z_g;
 
 /*
 I2C адресс ADXL345
@@ -41,10 +43,26 @@ uint8_t ADXL345_Address_r = 0xA7; // (1-чтение)
 uint8_t ADXL345_Address_w = 0xA6;
 
 #define POWER_CTL 0x2D
+#define DATA_FORMAT 0x31
 
 int16_t x_a;
 int16_t y_a;
 int16_t z_a;
+
+// Данные для анализа в матлабе
+uint8_t xa_1;
+uint8_t xa_2;
+uint8_t ya_1;
+uint8_t ya_2;
+uint8_t za_1;
+uint8_t za_2;
+
+uint8_t xg_1;
+uint8_t xg_2;
+uint8_t yg_1;
+uint8_t yg_2;
+uint8_t zg_1;
+uint8_t zg_2;
 
 char buf[32]={0};
 int counter=0;
@@ -177,9 +195,11 @@ uint8_t I2C_single_read(uint8_t HW_address_w, uint8_t HW_address_r, uint8_t addr
 void Init_ADXL345(void)
 {
   // POWER_CTL
-  I2C_single_write(ADXL345_Address_w,POWER_CTL,0); 
-  I2C_single_write(ADXL345_Address_w,POWER_CTL,16);
+  //I2C_single_write(ADXL345_Address_w,POWER_CTL,0); 
+  //I2C_single_write(ADXL345_Address_w,POWER_CTL,16);
   I2C_single_write(ADXL345_Address_w,POWER_CTL,8);
+  // left-justified, +/-16g, FULL_RES 
+  I2C_single_write(ADXL345_Address_w,DATA_FORMAT,0x0b);
 }
 
 // Гироскоп L3G4200D
@@ -191,7 +211,7 @@ void Init_L3G4200D(void)
   I2C_single_write(L3G4200D_Address_w,CTRL_REG2,0x00);
   // CTRL_REG3 (00001000) Вывод состояния Data Ready на DRDY/INT2
   I2C_single_write(L3G4200D_Address_w,CTRL_REG3,0x00);
-    // CTRL_REG4 (00001000)  Выбор полной шкалы 250 dps
+    // CTRL_REG4 (00001000)  Выбор полной шкалы 2000 dps
   I2C_single_write(L3G4200D_Address_w,CTRL_REG4,0x30);
     // CTRL_REG5 (00001000)  откл фильтр фвч и че-то еще
   I2C_single_write(L3G4200D_Address_w,CTRL_REG5,0x00);
@@ -205,43 +225,29 @@ void getGyroValues(void)
   uint8_t yL;
   uint8_t zH;
   uint8_t zL;
+  xg_1 = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x28); //28 L
+  xg_2 = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x29); //29 H 
+  yg_1 = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x2a);
+  yg_2 = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x2b);
+  zg_1 = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x2c);
+  zg_2 = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x2d);
   
-  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
-  I2C_GenerateSTART(I2C1, ENABLE);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
-  I2C_Send7bitAddress(I2C1, L3G4200D_Address_w, I2C_Direction_Transmitter);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED));
-  I2C_SendData(I2C1, 0x28);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
-  I2C_GenerateSTART(I2C1, ENABLE);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
-  I2C_Send7bitAddress(I2C1, L3G4200D_Address_r, I2C_Direction_Receiver);
-  while(!I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_BYTE_RECEIVED));
-  I2C_AcknowledgeConfig(I2C1, ENABLE);
-  
-  xL = I2C_ReceiveData(I2C1);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
-  xH = I2C_ReceiveData(I2C1);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
-  
-  yL = I2C_ReceiveData(I2C1);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
-  yH = I2C_ReceiveData(I2C1);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
-  
-  zL = I2C_ReceiveData(I2C1);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED)); 
-  I2C_AcknowledgeConfig(I2C1, DISABLE);
-  zH = I2C_ReceiveData(I2C1);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
-   
-  I2C_GenerateSTOP(I2C1, ENABLE);
-  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
-  I2C_AcknowledgeConfig(I2C1, ENABLE);
+  //xL = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x28); //28 L
+ // xH = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x29); //29 H 
+  /*yL = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x2a);
+  yH = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x2b);
+  zL = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x2c);
+  zH = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x2d);
   
   x_g = ((xH << 8) | xL);
   y_g = ((yH << 8) | yL);
   z_g = ((zH << 8) | zL);
+  
+  x_g = x_g*0.07*0.1;
+  y_g = y_g*0.07*0.1;
+  z_g = z_g*0.07*0.1;
+  */
+  //xg_1 = (xL | (xH << 8));
 }
 
 void getAccelValues(void)
@@ -267,29 +273,38 @@ void getAccelValues(void)
   I2C_AcknowledgeConfig(I2C1, ENABLE);
   
   xLSB = I2C_ReceiveData(I2C1);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED)); //X0
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
   xMSB = I2C_ReceiveData(I2C1);
-  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
-  
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED)); //X1
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
   yLSB = I2C_ReceiveData(I2C1);
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
   yMSB = I2C_ReceiveData(I2C1);
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
-  
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
   zLSB = I2C_ReceiveData(I2C1);
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
-  
+  I2C_AcknowledgeConfig(I2C1, DISABLE);
   zMSB = I2C_ReceiveData(I2C1);
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
-  I2C_AcknowledgeConfig(I2C1, DISABLE);
+
   
   I2C_GenerateSTOP(I2C1, ENABLE);
   while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
   I2C_AcknowledgeConfig(I2C1, ENABLE);
   
+  xa_1 = xLSB;
+  xa_2 = xMSB;
+  ya_1 = yLSB;
+  ya_2 = yMSB;
+  za_1 = zLSB;
+  za_2 = zMSB;
+  /*
   x_a = ((xMSB << 8) | xLSB);
   y_a = ((yMSB << 8) | yLSB);
   z_a = ((zMSB << 8) | zLSB);
+  */
 }
 
 // Функция задержки
@@ -385,61 +400,73 @@ int main()
   char str[10]; 
 
   InitUSART(); 
-  //Usart_Transmit_str("Start!!!\r\n");
-  //SERVO();
-  
+  //Usart_Transmit_str("Start!\r\n");
+  //SERVO();  
   InitI2C();
   
-  //Init_L3G4200D();
-  
+  Init_L3G4200D();
   Init_ADXL345();
    
   //Usart_Transmit_str("OK\r\n");
     
   Delay_ms(20);
-  //uint8_t adr = I2C_single_read(0xD3, 0x0F);
-  //Usart_Transmit(adr);
-  /*while(1)
-  {
-    getGyroValues();
-    //Usart_Transmit_str("X: ");
-    Usart_Transmit(y_g);
-    //Usart_Transmit_str("Y: ");
-    //Usart_Transmit_str("Z: ");
-    //Usart_Transmit(z_g);
-    //Usart_Transmit_str("\r\n");
-    Delay_ms(50);
-  }*/
   
   while(1)
   {
     getAccelValues();
-    //Usart_Transmit_str("X: ");
-    //sprintf(str, "%d", (int)x_a);
-    //Usart_Transmit_str(str);
-
-    //Usart_Transmit_str("Y: ");
-    //Usart_Transmit(y_a);
-    //deg = (int16_t)(180); 
-   // sprintf(str, "Angle: %d", deg);
-    //Usart_Transmit_str("Z: ");
-    //Usart_Transmit(z);
-    //Usart_Transmit_str(str);
-    Usart_Transmit_str("X: ");
-    sprintf(str, "%d", x_a);
+    getGyroValues();
+    // Gyro
+    /*sprintf(str, "%d", x_g);
     Usart_Transmit_str(str);
-    
-    Usart_Transmit_str(" Y: ");
-    sprintf(str, "%d", y_a);
+    Usart_Transmit_str(" ");
+    sprintf(str, "%d", y_g);
     Usart_Transmit_str(str);
-    
-    Usart_Transmit_str(" Z: ");
-    sprintf(str, "%d", z_a);
+    Usart_Transmit_str(" ");
+    sprintf(str, "%d", z_g);
     Usart_Transmit_str(str);
+    Usart_Transmit_str("\r\n");*/
+    // Accel
+    //Usart_Transmit('$');
+    //Usart_Transmit(xg_1);
+    /*Usart_Transmit(xg_2);
+    Usart_Transmit(yg_1);
+    Usart_Transmit(yg_2);
+    Usart_Transmit(zg_1);
+    Usart_Transmit(zg_2);
+    Usart_Transmit('z');*/
+    Usart_Transmit(xa_1);
+    Usart_Transmit(xa_2);
+    Usart_Transmit(ya_1);
+    Usart_Transmit(ya_2);
+    Usart_Transmit(za_1);
+    Usart_Transmit(za_2);
     
-    Usart_Transmit_str("\r\n");
-    
-    Delay_ms(300);
+    Usart_Transmit(xg_1);  
+    Usart_Transmit(xg_2);
+    Usart_Transmit(yg_1);  
+    Usart_Transmit(yg_2);
+    Usart_Transmit(zg_1);  
+    Usart_Transmit(zg_2);
+    Usart_Transmit('z');
+    /*Usart_Transmit(ya_1); 
+    Usart_Transmit(ya_2);
+    Usart_Transmit(za_1); 
+    Usart_Transmit(za_2);
+    Usart_Transmit('z');*/
+    //Usart_Transmit_str("123456#");
+    //Usart_Transmit_str("\r\n");
+    //Для отладки в матлабе
+    uint8_t data;
+    l=0;
+    while(!(l==1))
+    {
+      while(!USART_GetFlagStatus(USART1,USART_FLAG_RXNE)==RESET)
+      {
+      data=USART_ReceiveData(USART1);
+      if (data==0x0D) l=1;
+      }
+    }
+    //Delay_ms(100);
   }
 
 }
