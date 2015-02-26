@@ -19,7 +19,7 @@
           
           
           
-        <Column0>161</Column0><Column1>27</Column1><Column2>27</Column2><Column3>27</Column3></ColumnWidths>
+        <Column0>177</Column0><Column1>27</Column1><Column2>27</Column2><Column3>27</Column3></ColumnWidths>
       </Workspace>
       <Disassembly>
         <col-names>
@@ -73,14 +73,14 @@
       
       
       
-    <Pane/><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
+    <Pane><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\..\..\..\..\..\Program Files (x86)\IAR Systems\Embedded Workbench 6.5\arm\doc\infocenter\index.ENU.html</Filename></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\main.cpp</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>445</YPos2><SelStart2>15132</SelStart2><SelEnd2>15132</SelEnd2></Tab><ActiveTab>1</ActiveTab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_rcc.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>893</YPos2><SelStart2>39450</SelStart2><SelEnd2>39450</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_i2c.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>1042</YPos2><SelStart2>40062</SelStart2><SelEnd2>40062</SelEnd2></Tab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
     <Positions>
       
       
       
       
       
-    <Top><Row0><Sizes><Toolbar-00cf8f48><key>iaridepm.enu1</key></Toolbar-00cf8f48></Sizes></Row0><Row1><Sizes><Toolbar-00d5fd10><key>debuggergui.enu1</key></Toolbar-00d5fd10></Sizes></Row1><Row2><Sizes><Toolbar-00d5fc48><key>armstlink.enu1</key></Toolbar-00d5fc48></Sizes></Row2></Top><Left><Row0><Sizes><Wnd1><Rect><Top>-2</Top><Left>-2</Left><Bottom>718</Bottom><Right>235</Right><x>-2</x><y>-2</y><xscreen>237</xscreen><yscreen>553</yscreen><sizeHorzCX>185156</sizeHorzCX><sizeHorzCY>587049</sizeHorzCY><sizeVertCX>185156</sizeVertCX><sizeVertCY>764331</sizeVertCY></Rect></Wnd1></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd0><Rect><Top>-2</Top><Left>-2</Left><Bottom>131</Bottom><Right>1282</Right><x>-2</x><y>-2</y><xscreen>1284</xscreen><yscreen>133</yscreen><sizeHorzCX>1003125</sizeHorzCX><sizeHorzCY>141189</sizeHorzCY><sizeVertCX>185156</sizeVertCX><sizeVertCY>587049</sizeVertCY></Rect></Wnd0></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
+    <Top><Row0><Sizes><Toolbar-02e28f48><key>iaridepm.enu1</key></Toolbar-02e28f48></Sizes></Row0><Row1><Sizes><Toolbar-02e8efc8><key>debuggergui.enu1</key></Toolbar-02e8efc8></Sizes></Row1><Row2><Sizes><Toolbar-02e8f158><key>armstlink.enu1</key></Toolbar-02e8f158></Sizes></Row2></Top><Left><Row0><Sizes><Wnd1><Rect><Top>-2</Top><Left>-2</Left><Bottom>498</Bottom><Right>251</Right><x>-2</x><y>-2</y><xscreen>253</xscreen><yscreen>403</yscreen><sizeHorzCX>185212</sizeHorzCX><sizeHorzCY>587464</sizeHorzCY><sizeVertCX>185212</sizeVertCX><sizeVertCY>728863</sizeVertCY></Rect></Wnd1></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd0><Rect><Top>-2</Top><Left>-2</Left><Bottom>95</Bottom><Right>1368</Right><x>-2</x><y>-2</y><xscreen>1370</xscreen><yscreen>97</yscreen><sizeHorzCX>1002928</sizeHorzCX><sizeHorzCY>141399</sizeHorzCY><sizeVertCX>185212</sizeVertCX><sizeVertCY>587464</sizeVertCY></Rect></Wnd0></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
   </Desktop>
 </Project>
 

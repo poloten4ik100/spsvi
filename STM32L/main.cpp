@@ -49,6 +49,24 @@ int16_t x_a;
 int16_t y_a;
 int16_t z_a;
 
+/*
+I2C адресс Honeywell MC5883L
+HEX: 0x1E
+*/
+uint8_t MC5883L_Address = 0x1E;
+uint8_t MC5883L_Address_r = 0x3D; // (1-чтение)
+uint8_t MC5883L_Address_w = 0x3C; 
+
+#define CTRL_REG1 0x20
+#define CTRL_REG2 0x21
+#define CTRL_REG3 0x22
+#define CTRL_REG4 0x23
+#define CTRL_REG5 0x24
+
+int16_t x_m;
+int16_t y_m;
+int16_t z_m;
+
 // Данные для анализа в матлабе
 uint8_t xa_1;
 uint8_t xa_2;
@@ -204,6 +222,21 @@ void Init_ADXL345(void)
 
 // Гироскоп L3G4200D
 void Init_L3G4200D(void)
+{
+  // CTRL_REG1 (00001111) Скорость оцифровки сигнала 100Гц (Cut-Off 12.5), все оси включены, Power Down - нормальный режим
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG1,0x0f); 
+  // CTRL_REG2 (00000000) Нормальный режим ФВЧ (сброс чтением HP_RESET_FILTER), частота среза 8Гц (ODR=100Гц)
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG2,0x00);
+  // CTRL_REG3 (00001000) Вывод состояния Data Ready на DRDY/INT2
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG3,0x00);
+    // CTRL_REG4 (00001000)  Выбор полной шкалы 2000 dps
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG4,0x30);
+    // CTRL_REG5 (00001000)  откл фильтр фвч и че-то еще
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG5,0x00);
+}
+
+//Компас Honeywell MC5883L
+void Init_MC5883L(void)
 {
   // CTRL_REG1 (00001111) Скорость оцифровки сигнала 100Гц (Cut-Off 12.5), все оси включены, Power Down - нормальный режим
   I2C_single_write(L3G4200D_Address_w,CTRL_REG1,0x0f); 
@@ -447,7 +480,7 @@ int main()
     Usart_Transmit(yg_2);
     Usart_Transmit(zg_1);  
     Usart_Transmit(zg_2);
-    Usart_Transmit('z');
+    Usart_Transmit('z'); 
     /*Usart_Transmit(ya_1); 
     Usart_Transmit(ya_2);
     Usart_Transmit(za_1); 
@@ -456,7 +489,7 @@ int main()
     //Usart_Transmit_str("123456#");
     //Usart_Transmit_str("\r\n");
     //Для отладки в матлабе
-    uint8_t data;
+  uint8_t data;
     l=0;
     while(!(l==1))
     {
@@ -465,8 +498,8 @@ int main()
       data=USART_ReceiveData(USART1);
       if (data==0x0D) l=1;
       }
-    }
-    //Delay_ms(100);
+    } 
+   // Delay_ms(100);
   }
 
 }
