@@ -6,12 +6,19 @@
 #include "stdlib.h"
 #include "stdio.h"
 #include "string.h"
+#include "math.h"
 
-#define SERVO_180 5243
-#define SERVO_0 1050
+#define SERVO_180 5300
+#define SERVO_0 1400
 
 int j=1,l=0;
 
+int servo_angle_pitch = 90;
+int pitch_angle = 0;
+int servo_angle_roll = 90;
+int roll_angle = 0;
+int tim_angle_pitch = 3000;
+int tim_angle_roll = 3000;
 /*
 I2C адресс L3G4200D
 HEX: 0x69
@@ -57,11 +64,9 @@ uint8_t MC5883L_Address = 0x1E;
 uint8_t MC5883L_Address_r = 0x3D; // (1-чтение)
 uint8_t MC5883L_Address_w = 0x3C; 
 
-#define CTRL_REG1 0x20
-#define CTRL_REG2 0x21
-#define CTRL_REG3 0x22
-#define CTRL_REG4 0x23
-#define CTRL_REG5 0x24
+#define ConfigR_A 0x00
+#define ConfigR_B 0x01
+#define ModeR 0x02
 
 int16_t x_m;
 int16_t y_m;
@@ -81,6 +86,13 @@ uint8_t yg_1;
 uint8_t yg_2;
 uint8_t zg_1;
 uint8_t zg_2;
+
+uint8_t xm_1;
+uint8_t xm_2;
+uint8_t ym_1;
+uint8_t ym_2;
+uint8_t zm_1;
+uint8_t zm_2;
 
 char buf[32]={0};
 int counter=0;
@@ -103,10 +115,26 @@ void Usart_Transmit_str(char* str)
   }
 }
 
-void set_pos(uint8_t pos) 
+void set_pos_servo1(uint8_t pos) 
 {
   uint32_t tmp=(SERVO_180 - SERVO_0) /180 ;
   TIM2->CCR2 = SERVO_0 + tmp * pos;
+ }
+
+void set_pos_servo2(uint8_t pos) 
+{
+  uint32_t tmp=(SERVO_180 - SERVO_0) /180 ;
+  TIM2->CCR3 = SERVO_0 + tmp * pos;
+ }
+
+void set_pos_servo1_tim(uint8_t pos) 
+{
+  TIM2->CCR2 = pos;
+ }
+
+void set_pos_servo2_tim(uint8_t pos) 
+{
+  TIM2->CCR3 = pos;
  }
 
 GPIO_InitTypeDef GPIO_InitStruct;
@@ -147,6 +175,7 @@ void InitI2C(void)
 {
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE); //Включаем тактирование GPIOB
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE); //Включаем тактирование I2C
+  
   
   I2C_StructInit(&I2C_InitStructure);
   I2C_InitStructure.I2C_ClockSpeed = 100000; // частота тактового сигнала (100кГц), максимум – 400 КГц
@@ -238,16 +267,9 @@ void Init_L3G4200D(void)
 //Компас Honeywell MC5883L
 void Init_MC5883L(void)
 {
-  // CTRL_REG1 (00001111) Скорость оцифровки сигнала 100Гц (Cut-Off 12.5), все оси включены, Power Down - нормальный режим
-  I2C_single_write(L3G4200D_Address_w,CTRL_REG1,0x0f); 
-  // CTRL_REG2 (00000000) Нормальный режим ФВЧ (сброс чтением HP_RESET_FILTER), частота среза 8Гц (ODR=100Гц)
-  I2C_single_write(L3G4200D_Address_w,CTRL_REG2,0x00);
-  // CTRL_REG3 (00001000) Вывод состояния Data Ready на DRDY/INT2
-  I2C_single_write(L3G4200D_Address_w,CTRL_REG3,0x00);
-    // CTRL_REG4 (00001000)  Выбор полной шкалы 2000 dps
-  I2C_single_write(L3G4200D_Address_w,CTRL_REG4,0x30);
-    // CTRL_REG5 (00001000)  откл фильтр фвч и че-то еще
-  I2C_single_write(L3G4200D_Address_w,CTRL_REG5,0x00);
+  I2C_single_write(MC5883L_Address_w, ConfigR_A, 0x70); //8-среднее число выборок, 15 Hz default, normal measurement
+  I2C_single_write(MC5883L_Address_w, ConfigR_B,0xA0); //Gain=5, or any other desired gain
+  I2C_single_write(MC5883L_Address_w, ModeR, 0x00); 
 }
 
 void getGyroValues(void)
@@ -271,11 +293,11 @@ void getGyroValues(void)
   yH = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x2b);
   zL = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x2c);
   zH = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x2d);
-  
-  x_g = ((xH << 8) | xL);
-  y_g = ((yH << 8) | yL);
-  z_g = ((zH << 8) | zL);
-  
+ */ 
+  x_g = ((xg_2 << 8) | xg_1);
+  y_g = ((yg_2 << 8) | yg_1);
+  z_g = ((zg_2 << 8) | zg_1);
+  /*
   x_g = x_g*0.07*0.1;
   y_g = y_g*0.07*0.1;
   z_g = z_g*0.07*0.1;
@@ -333,11 +355,67 @@ void getAccelValues(void)
   ya_2 = yMSB;
   za_1 = zLSB;
   za_2 = zMSB;
-  /*
+  
   x_a = ((xMSB << 8) | xLSB);
   y_a = ((yMSB << 8) | yLSB);
   z_a = ((zMSB << 8) | zLSB);
-  */
+  
+}
+
+void getMagValues(void)
+{
+  uint8_t xMSB;
+  uint8_t xLSB;
+  uint8_t yMSB;
+  uint8_t yLSB;
+  uint8_t zMSB;
+  uint8_t zLSB;
+  
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+  I2C_GenerateSTART(I2C1, ENABLE);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+  I2C_Send7bitAddress(I2C1, MC5883L_Address_w, I2C_Direction_Transmitter);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED));
+  I2C_SendData(I2C1, 0x03);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_TRANSMITTED));
+  I2C_GenerateSTART(I2C1, ENABLE);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_MODE_SELECT));
+  I2C_Send7bitAddress(I2C1, MC5883L_Address_r, I2C_Direction_Receiver);
+  while(!I2C_CheckEvent(I2C1,I2C_EVENT_MASTER_BYTE_RECEIVED));
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
+  
+  xLSB = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED)); //X0
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
+  xMSB = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED)); //X1
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
+  zLSB = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  zMSB = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
+  yLSB = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+  I2C_AcknowledgeConfig(I2C1, DISABLE);
+  yMSB = I2C_ReceiveData(I2C1);
+  while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
+
+  
+  I2C_GenerateSTOP(I2C1, ENABLE);
+  while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
+  I2C_AcknowledgeConfig(I2C1, ENABLE);
+  
+  x_m = (xLSB << 8) | xMSB;
+  y_m = (yLSB << 8) | yMSB;
+  z_m = (zLSB << 8) | zMSB;
+  
+  xm_1 = xMSB;
+  xm_2 = xLSB;
+  ym_1 = yMSB;
+  ym_2 = yLSB;
+  zm_1 = zMSB;
+  zm_2 = zLSB;
 }
 
 // Функция задержки
@@ -396,7 +474,7 @@ void SERVO(void)
     5242,5 - -90 градусов
     */
     TIM2->CCR2 = 3145;//Длительность импульса (в данном случае Duty cycle = 80%)
-    TIM2->CCR3 = 2097;
+    TIM2->CCR3 = 3145;
     //TIM2->CCER |= TIM_CCER_CC2P;//Полярность выходного сигнала
     TIM2->CCER |= (TIM_CCER_CC2E | TIM_CCER_CC3E);//Выход канала захвата/сравнения включен
     TIM2->CR1 |= TIM_CR1_CEN;//Старт счета таймера
@@ -428,26 +506,174 @@ s[i] = '\0';
 reverse(s);
 }
 
+//arduino example code for getting the calibrated magnetometer data 
+//calibrated_values[3] is the global array where the calibrated data will be placed
+//calibrated_values[3]: [0]=Xc, [1]=Yc, [2]=Zc
+float calibrated_values[3];   
+//transformation(float uncalibrated_values[3]) is the function of the magnetometer data correction 
+//uncalibrated_values[3] is the array of the non calibrated magnetometer data
+//uncalibrated_values[3]: [0]=Xnc, [1]=Ync, [2]=Znc
+void transformation(float uncalibrated_values[3])    
+{
+  //calibration_matrix[3][3] is the transformation matrix
+  //replace M11, M12,..,M33 with your transformation matrix data
+  double calibration_matrix[3][3] = 
+  {
+    {1.038, -0.009, 0.011},
+    {0.021, 1.065, -0.046},
+    {0.027, 0.019, 1.241}  
+  };
+  //bias[3] is the bias
+  //replace Bx, By, Bz with your bias data
+  double bias[3] = 
+  {
+    15.67,
+    14.585,
+    -33.419
+  };  
+  //calculation
+  for (int i=0; i<3; ++i) uncalibrated_values[i] = uncalibrated_values[i] - bias[i];
+  float result[3] = {0, 0, 0};
+  for (int i=0; i<3; ++i)
+    for (int j=0; j<3; ++j)
+      result[i] += calibration_matrix[i][j] * uncalibrated_values[j];
+  for (int i=0; i<3; ++i) calibrated_values[i] = result[i];
+}
+
 int main()
 {
   char str[10]; 
-
+  int16_t pitch;
+  int16_t roll;
+  int16_t yaw;
+  int16_t FilterRoll;
+  int16_t FilterPitch;
+  int16_t FilterYaw;
+  double K = 0.4;
+  int16_t pitch_adder;
+  double angle;
+  float input_data [3];
+  float cal_values[3];  
+  float Xcal2;  
+  float Ycal2;
+  float xa,ya,za;
+  int i =0;
+  
   InitUSART(); 
   //Usart_Transmit_str("Start!\r\n");
-  //SERVO();  
-  InitI2C();
-  
+  SERVO();  
+  InitI2C();  
   Init_L3G4200D();
   Init_ADXL345();
-   
+  Init_MC5883L();
   //Usart_Transmit_str("OK\r\n");
-    
-  Delay_ms(20);
+
+  Delay_ms(200);
   
   while(1)
   {
     getAccelValues();
     getGyroValues();
+    getMagValues();
+    xa =x_a*0.03125;
+    ya =y_a*0.03125;
+    za =z_a*0.03125;
+    roll = atan2(ya ,za);
+    pitch = atan2(xa ,sqrt(za*za + ya*ya));
+    
+    FilterRoll = (1-K)*(FilterRoll+x_g*0.07*0.01)+K*roll;
+    FilterPitch = (1-K)*(FilterPitch+(-1)*y_g*0.07*0.01)+K*pitch;
+   // set_pos_servo1(FilterPitch+90);
+   //   set_pos_servo2((-1)*FilterRoll+90);*/
+    //pitch_adder = pitch_adder + ((-1)*FilterRoll+90)-90;
+    roll_angle = (-1)*FilterRoll+90;
+    pitch_angle = FilterPitch+90;
+    
+    if (roll_angle>91)
+    {
+      tim_angle_roll--;
+      set_pos_servo2(tim_angle_roll);
+    } else 
+    {
+      if (roll_angle<89)
+      {
+        tim_angle_roll++;
+        set_pos_servo2(tim_angle_roll);
+      }
+    }
+    
+    
+    if (pitch_angle>91)
+    {
+      tim_angle_pitch--;
+      set_pos_servo1(tim_angle_pitch);
+    } else 
+    {
+      if (pitch_angle<89)
+      {
+        tim_angle_pitch++;
+        set_pos_servo1(tim_angle_pitch);
+      }
+    }
+    
+  /*    sprintf(str, "%d", roll_angle);
+      Usart_Transmit_str(str); 
+      Usart_Transmit(' ');
+      sprintf(str, "%d", pitch_angle); 
+      Usart_Transmit_str(str); 
+      Usart_Transmit_str("\r\n");*/
+    float input_data [3] = {(double)x_m,(double)y_m,(double)z_m};
+    transformation(input_data);
+ /*   angle = atan2((int)calibrated_values[1]*0.92, (int)calibrated_values[0]*0.92);
+    if (angle < 0) 
+    angle += 2*3.14;
+    if (angle > 2*3.14)
+    angle -= 2*3.14;        
+    yaw = (uint16_t)(angle * (180 / 3.14)) ;*/
+    
+    Xcal2 = ((int)calibrated_values[0]*0.92)*cos((float)pitch) + ((int)calibrated_values[1]*0.92)*sin((float)roll)*sin((float)pitch) + ((int)calibrated_values[2]*0.92)*cos((float)roll)*sin((float)pitch);
+    Ycal2 = ((int)calibrated_values[1]*0.92)*cos((float)roll) - ((int)calibrated_values[2]*0.92)*sin((float)roll);
+    angle = atan2( -Ycal2, Xcal2 );
+    if (angle < 0) 
+    angle += 2*3.14;
+    if (angle > 2*3.14)
+    angle -= 2*3.14;        
+    yaw = (uint16_t)(angle * (180 / 3.14));
+    sprintf(str, "%d ", yaw);
+    Usart_Transmit_str(str);
+    /*
+    FilterYaw = (1-K)*(FilterYaw+z_g*0.07*0.1)+K*yaw;
+    
+    
+    // Вывод калиброваных значений
+    float input_data [3] = {(double)x_m,(double)y_m,(double)z_m};
+    transformation(input_data);
+    sprintf(str, "%d ", (int)calibrated_values[0]);
+    Usart_Transmit_str(str);
+    Usart_Transmit(',');
+    sprintf(str, "%d", (int)calibrated_values[1]);
+    Usart_Transmit_str(str);
+    Usart_Transmit(',');
+    sprintf(str, "%d", (int)calibrated_values[2]);
+    Usart_Transmit_str(str);
+    Usart_Transmit_str("\r\n");*/
+    
+   /* sprintf(str, "%d", x_m);
+    Usart_Transmit_str(str);
+    Usart_Transmit(',');
+    sprintf(str, "%d", y_m);
+    Usart_Transmit_str(str);
+    Usart_Transmit(',');
+    sprintf(str, "%d", z_m);
+    Usart_Transmit_str(str);
+    
+    Usart_Transmit_str("\r\n");*/
+  /*  sprintf(str, "%d", 90-pitch_adder);
+    //Usart_Transmit_str(" FilterRoll "); 
+    Usart_Transmit_str(str); 
+    Usart_Transmit_str("\r\n");*/
+    //getGyroValues();
+    //getMagValues();
     // Gyro
     /*sprintf(str, "%d", x_g);
     Usart_Transmit_str(str);
@@ -467,7 +693,7 @@ int main()
     Usart_Transmit(zg_1);
     Usart_Transmit(zg_2);
     Usart_Transmit('z');*/
-    Usart_Transmit(xa_1);
+/*    Usart_Transmit(xa_1);
     Usart_Transmit(xa_2);
     Usart_Transmit(ya_1);
     Usart_Transmit(ya_2);
@@ -480,7 +706,14 @@ int main()
     Usart_Transmit(yg_2);
     Usart_Transmit(zg_1);  
     Usart_Transmit(zg_2);
-    Usart_Transmit('z'); 
+   
+    Usart_Transmit(xm_1);  
+    Usart_Transmit(xm_2);
+    Usart_Transmit(ym_1);  
+    Usart_Transmit(ym_2);
+    Usart_Transmit(zm_1); 
+    Usart_Transmit(zm_2);
+    Usart_Transmit('z');*/
     /*Usart_Transmit(ya_1); 
     Usart_Transmit(ya_2);
     Usart_Transmit(za_1); 
@@ -489,7 +722,7 @@ int main()
     //Usart_Transmit_str("123456#");
     //Usart_Transmit_str("\r\n");
     //Для отладки в матлабе
-  uint8_t data;
+/*   uint8_t data;
     l=0;
     while(!(l==1))
     {
@@ -498,8 +731,19 @@ int main()
       data=USART_ReceiveData(USART1);
       if (data==0x0D) l=1;
       }
-    } 
-   // Delay_ms(100);
+    } */
+   /* set_pos(180);
+    Delay_ms(5000);
+    set_pos(0);
+    Delay_ms(5000);
+    set_pos(90);
+    Delay_ms(5000);*/
+  /*  for (i=0;i<180;i++)
+    {
+    set_pos(i);
+    Delay_ms(100);
+    }*/
+    Delay_ms(100);
   }
 
 }
