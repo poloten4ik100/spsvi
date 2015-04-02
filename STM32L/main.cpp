@@ -8,8 +8,8 @@
 #include "string.h"
 #include "math.h"
 
-#define SERVO_180 5300
-#define SERVO_0 1400
+#define SERVO_180 40000
+#define SERVO_0 8000
 
 int j=1,l=0;
 
@@ -17,8 +17,11 @@ int servo_angle_pitch = 90;
 int pitch_angle = 0;
 int servo_angle_roll = 90;
 int roll_angle = 0;
+int servo_angle_yaw = 90;
+int yaw_angle = 0;
 int tim_angle_pitch = 3000;
 int tim_angle_roll = 3000;
+int tim_angle_yaw = 3000;
 /*
 I2C адресс L3G4200D
 HEX: 0x69
@@ -127,14 +130,25 @@ void set_pos_servo2(uint8_t pos)
   TIM2->CCR3 = SERVO_0 + tmp * pos;
  }
 
-void set_pos_servo1_tim(uint8_t pos) 
+void set_pos_servo3(uint8_t pos) 
+{
+  uint32_t tmp=(SERVO_180 - SERVO_0) /180 ;
+  TIM2->CCR4 = SERVO_0 + tmp * pos;
+ }
+
+void set_pos_servo1_tim(int pos) 
 {
   TIM2->CCR2 = pos;
  }
 
-void set_pos_servo2_tim(uint8_t pos) 
+void set_pos_servo2_tim(int pos) 
 {
   TIM2->CCR3 = pos;
+ }
+
+void set_pos_servo3_tim(int pos) 
+{
+  TIM2->CCR4 = pos;
  }
 
 GPIO_InitTypeDef GPIO_InitStruct;
@@ -174,8 +188,7 @@ void InitUSART(void)
 void InitI2C(void)
 {
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE); //Включаем тактирование GPIOB
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE); //Включаем тактирование I2C
-  
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE); //Включаем тактирование I2C 
   
   I2C_StructInit(&I2C_InitStructure);
   I2C_InitStructure.I2C_ClockSpeed = 100000; // частота тактового сигнала (100кГц), максимум – 400 КГц
@@ -274,12 +287,12 @@ void Init_MC5883L(void)
 
 void getGyroValues(void)
 {
-  uint8_t xH;
+/*  uint8_t xH;
   uint8_t xL;
   uint8_t yH;
   uint8_t yL;
   uint8_t zH;
-  uint8_t zL;
+  uint8_t zL;*/
   xg_1 = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x28); //28 L
   xg_2 = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x29); //29 H 
   yg_1 = I2C_single_read(L3G4200D_Address_w,L3G4200D_Address_r,0x2a);
@@ -359,7 +372,6 @@ void getAccelValues(void)
   x_a = ((xMSB << 8) | xLSB);
   y_a = ((yMSB << 8) | yLSB);
   z_a = ((zMSB << 8) | zLSB);
-  
 }
 
 void getMagValues(void)
@@ -400,7 +412,6 @@ void getMagValues(void)
   I2C_AcknowledgeConfig(I2C1, DISABLE);
   yMSB = I2C_ReceiveData(I2C1);
   while(!I2C_CheckEvent(I2C1, I2C_EVENT_MASTER_BYTE_RECEIVED));
-
   
   I2C_GenerateSTOP(I2C1, ENABLE);
   while(I2C_GetFlagStatus(I2C1, I2C_FLAG_BUSY));
@@ -429,19 +440,7 @@ void Delay_ms(uint32_t ms)
 }
 
 void SERVO(void)
-  {
-    /* 
-      Настраиваем такирвую частоту процессора от HSI 
-      HSI oscillator clock – внутренний высокочастотный RC генератор
-      с частотой 16 МГц 
-    */
-    /*
-    RCC->CR |= RCC_CR_HSION; //Включаем тактовый генератор HSI
-    while(!(RCC_CR_HSIRDY)); //Ждем его стабилизации
-    RCC->CFGR |= RCC_CFGR_SW_HSI; //Выбираем источником тактовой частоты SYSCLK генератор HSI
-    RCC->CR &= ~RCC_CR_MSION; //Отключаем генератор MSI.
-    */
-    
+  { 
     /*Инициализация GPIOA. Вывод PA1 настраивается для работы с выходом TIM2_CH2*/
     RCC->AHBENR |=RCC_AHBENR_GPIOAEN;//Тактирование GPIOA
         
@@ -455,7 +454,12 @@ void SERVO(void)
     GPIOA->OSPEEDR |=GPIO_OSPEEDER_OSPEEDR2;  //40 MHz
     GPIOA->PUPDR &=~GPIO_PUPDR_PUPDR2;  //No pull-up, pull-down
     
-    GPIOA->AFR[0] = 0x00000110;//PA1 - AFIO1 (TIM2_CH2 и TIM2_CH3)
+    GPIOA->MODER |= GPIO_MODER_MODER3_1;  //Alternate function mode
+    GPIOA->OTYPER &= ~GPIO_OTYPER_OT_3;  //Output push-pull
+    GPIOA->OSPEEDR |=GPIO_OSPEEDER_OSPEEDR3;  //40 MHz
+    GPIOA->PUPDR &=~GPIO_PUPDR_PUPDR3;  //No pull-up, pull-down
+    
+    GPIOA->AFR[0] = 0x00001110;//PA1 - AFIO1 (TIM2_CH2 и TIM2_CH3 и TIM2_CH4)
 
     /*Инициализация таймера TIM2
     Для формирования ШИМ используется канал захвата/сравнения 2 (TIM2_CH2)*/
@@ -464,19 +468,20 @@ void SERVO(void)
     TIM2->CR1 |= TIM_CR1_ARPE;//Включен режим предварительной записи регистра автоперезагрузки
     TIM2->CCMR1 |= TIM_CCMR1_OC2PE;//Включен режим предварительной загрузки регистра сравнения
     TIM2->CCMR1 |= (TIM_CCMR1_OC2M_2 | TIM_CCMR1_OC2M_1);
-    TIM2->CCMR2 |= (TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1 );//OC2M = 110 - PWM mode 1
-    TIM2->ARR = 41939;//Период выходного сигнала T = 20mS (надо 20ms = 50Гц)
+    TIM2->CCMR2 |= (TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1 | TIM_CCMR2_OC4M_2 | TIM_CCMR2_OC4M_1);
+    TIM2->ARR = 319999;//Период выходного сигнала T = 20mS (надо 20ms = 50Гц)
     /*
-    1048,5 - 90 градусов 1200 предел =/
-    2097 - 45 градусов
-    3145 - 0 градусов
-    4193 - -45 градусов
-    5242,5 - -90 градусов
+    8000 - 90 градусов 1200 предел =/
+    16000 - 45 градусов
+    24000 - 0 градусов
+    32000 - -45 градусов
+    40000 - -90 градусов
     */
-    TIM2->CCR2 = 3145;//Длительность импульса (в данном случае Duty cycle = 80%)
-    TIM2->CCR3 = 3145;
+    TIM2->CCR2 = 24000;//Длительность импульса (в данном случае Duty cycle = 80%)
+    TIM2->CCR3 = 24000;
+    TIM2->CCR4 = 24000;
     //TIM2->CCER |= TIM_CCER_CC2P;//Полярность выходного сигнала
-    TIM2->CCER |= (TIM_CCER_CC2E | TIM_CCER_CC3E);//Выход канала захвата/сравнения включен
+    TIM2->CCER |= (TIM_CCER_CC2E | TIM_CCER_CC3E | TIM_CCER_CC4E);//Выход канала захвата/сравнения включен
     TIM2->CR1 |= TIM_CR1_CEN;//Старт счета таймера
   }
 
@@ -540,111 +545,122 @@ void transformation(float uncalibrated_values[3])
   for (int i=0; i<3; ++i) calibrated_values[i] = result[i];
 }
 
-int main()
+main()
 {
   char str[10]; 
   int16_t pitch;
   int16_t roll;
+  int16_t pitch_tmp;
+  int16_t roll_tmp;
   int16_t yaw;
   int16_t FilterRoll;
   int16_t FilterPitch;
   int16_t FilterYaw;
-  double K = 0.4;
-  int16_t pitch_adder;
+  int zaderzhka = 10;
+  double K = 0.9;
   double angle;
-  float input_data [3];
-  float cal_values[3];  
   float Xcal2;  
   float Ycal2;
   float xa,ya,za;
-  int i =0;
+  
+  /* 
+  Настраиваем такирвую частоту процессора от HSI 
+  HSI oscillator clock – внутренний высокочастотный RC генератор
+  с частотой 16 МГц 
+  */
+  RCC->CR |= RCC_CR_HSION; //Включаем тактовый генератор HSI
+  while(!(RCC_CR_HSIRDY)); //Ждем его стабилизации
+  RCC->CFGR |= RCC_CFGR_SW_HSI; //Выбираем источником тактовой частоты SYSCLK генератор HSI
+  RCC->CR &= ~RCC_CR_MSION; //Отключаем генератор MSI.
   
   InitUSART(); 
-  //Usart_Transmit_str("Start!\r\n");
   SERVO();  
   InitI2C();  
   Init_L3G4200D();
   Init_ADXL345();
   Init_MC5883L();
-  //Usart_Transmit_str("OK\r\n");
-
-  Delay_ms(200);
+  Delay_ms(1);
   
   while(1)
   {
     getAccelValues();
     getGyroValues();
     getMagValues();
+
     xa =x_a*0.03125;
     ya =y_a*0.03125;
     za =z_a*0.03125;
-    roll = atan2(ya ,za);
-    pitch = atan2(xa ,sqrt(za*za + ya*ya));
-    
-    FilterRoll = (1-K)*(FilterRoll+x_g*0.07*0.01)+K*roll;
-    FilterPitch = (1-K)*(FilterPitch+(-1)*y_g*0.07*0.01)+K*pitch;
-   // set_pos_servo1(FilterPitch+90);
-   //   set_pos_servo2((-1)*FilterRoll+90);*/
-    //pitch_adder = pitch_adder + ((-1)*FilterRoll+90)-90;
+    roll_tmp = atan2(ya ,za);
+    pitch_tmp = atan2(xa ,sqrt(za*za + ya*ya));
+    roll = (atan2(ya ,za) * 180) / 3.14;
+    pitch = (atan2(xa ,sqrt(za*za + ya*ya)) * 180) / 3.14;
+    FilterRoll = (1-K)*(FilterRoll+x_g*0.07*(zaderzhka/1000))+K*roll;
+    FilterPitch = (1-K)*(FilterPitch+(-1)*y_g*0.07*(zaderzhka/1000))+K*pitch;
     roll_angle = (-1)*FilterRoll+90;
-    pitch_angle = FilterPitch+90;
-    
-    if (roll_angle>91)
+    pitch_angle = FilterPitch+90;   
+    if (roll_angle>90)
     {
-      tim_angle_roll--;
-      set_pos_servo2(tim_angle_roll);
+      servo_angle_roll--;
+      set_pos_servo2(servo_angle_roll);
+      Delay_ms(20);
     } else 
     {
-      if (roll_angle<89)
+      if (roll_angle<90)
       {
-        tim_angle_roll++;
-        set_pos_servo2(tim_angle_roll);
+        servo_angle_roll++;
+        set_pos_servo2(servo_angle_roll);
+        Delay_ms(20);
       }
-    }
+    }        
     
-    
-    if (pitch_angle>91)
+    if (pitch_angle>90)
     {
-      tim_angle_pitch--;
-      set_pos_servo1(tim_angle_pitch);
+      servo_angle_pitch++;
+      set_pos_servo1(servo_angle_pitch);
+      Delay_ms(20);
     } else 
     {
-      if (pitch_angle<89)
+      if (pitch_angle<90)
       {
-        tim_angle_pitch++;
-        set_pos_servo1(tim_angle_pitch);
+        servo_angle_pitch--;
+        set_pos_servo1(servo_angle_pitch);
+        Delay_ms(20);
       }
-    }
-    
-  /*    sprintf(str, "%d", roll_angle);
-      Usart_Transmit_str(str); 
-      Usart_Transmit(' ');
-      sprintf(str, "%d", pitch_angle); 
+    } //    
+     /// sprintf(str, "%d", tim_angle_pitch);
+      //Usart_Transmit_str(str); 
+     // Usart_Transmit_str("\r\n");
+/*      sprintf(str, "%d", pitch_angle ); 
       Usart_Transmit_str(str); 
       Usart_Transmit_str("\r\n");*/
     float input_data [3] = {(double)x_m,(double)y_m,(double)z_m};
-    transformation(input_data);
- /*   angle = atan2((int)calibrated_values[1]*0.92, (int)calibrated_values[0]*0.92);
-    if (angle < 0) 
-    angle += 2*3.14;
-    if (angle > 2*3.14)
-    angle -= 2*3.14;        
-    yaw = (uint16_t)(angle * (180 / 3.14)) ;*/
-    
-    Xcal2 = ((int)calibrated_values[0]*0.92)*cos((float)pitch) + ((int)calibrated_values[1]*0.92)*sin((float)roll)*sin((float)pitch) + ((int)calibrated_values[2]*0.92)*cos((float)roll)*sin((float)pitch);
-    Ycal2 = ((int)calibrated_values[1]*0.92)*cos((float)roll) - ((int)calibrated_values[2]*0.92)*sin((float)roll);
+    transformation(input_data);     
+    Xcal2 = ((int)calibrated_values[0]*0.92)*cos((float)pitch_tmp) + ((int)calibrated_values[1]*0.92)*sin((float)roll_tmp)*sin((float)pitch_tmp) + ((int)calibrated_values[2]*0.92)*cos((float)roll_tmp)*sin((float)pitch_tmp);
+    Ycal2 = ((int)calibrated_values[1]*0.92)*cos((float)roll_tmp) - ((int)calibrated_values[2]*0.92)*sin((float)roll_tmp);
     angle = atan2( -Ycal2, Xcal2 );
     if (angle < 0) 
     angle += 2*3.14;
     if (angle > 2*3.14)
     angle -= 2*3.14;        
     yaw = (uint16_t)(angle * (180 / 3.14));
-    sprintf(str, "%d ", yaw);
-    Usart_Transmit_str(str);
+    FilterYaw = (1-K)*(FilterYaw+z_g*0.07*(zaderzhka/1000))+K*yaw; 
+
+    if (FilterYaw>180)
+    {
+      servo_angle_yaw--;
+      set_pos_servo3(servo_angle_yaw); 
+    } else 
+    {
+      if (FilterYaw<180)
+      {
+        servo_angle_yaw++;
+        set_pos_servo3(servo_angle_yaw);
+      }
+    } 
+    /*sprintf(str, "%d", FilterYaw ); 
+      Usart_Transmit_str(str); 
+      Usart_Transmit_str("\r\n");*/
     /*
-    FilterYaw = (1-K)*(FilterYaw+z_g*0.07*0.1)+K*yaw;
-    
-    
     // Вывод калиброваных значений
     float input_data [3] = {(double)x_m,(double)y_m,(double)z_m};
     transformation(input_data);
@@ -657,43 +673,9 @@ int main()
     sprintf(str, "%d", (int)calibrated_values[2]);
     Usart_Transmit_str(str);
     Usart_Transmit_str("\r\n");*/
-    
-   /* sprintf(str, "%d", x_m);
-    Usart_Transmit_str(str);
-    Usart_Transmit(',');
-    sprintf(str, "%d", y_m);
-    Usart_Transmit_str(str);
-    Usart_Transmit(',');
-    sprintf(str, "%d", z_m);
-    Usart_Transmit_str(str);
-    
-    Usart_Transmit_str("\r\n");*/
-  /*  sprintf(str, "%d", 90-pitch_adder);
-    //Usart_Transmit_str(" FilterRoll "); 
-    Usart_Transmit_str(str); 
-    Usart_Transmit_str("\r\n");*/
-    //getGyroValues();
-    //getMagValues();
-    // Gyro
-    /*sprintf(str, "%d", x_g);
-    Usart_Transmit_str(str);
-    Usart_Transmit_str(" ");
-    sprintf(str, "%d", y_g);
-    Usart_Transmit_str(str);
-    Usart_Transmit_str(" ");
-    sprintf(str, "%d", z_g);
-    Usart_Transmit_str(str);
-    Usart_Transmit_str("\r\n");*/
-    // Accel
-    //Usart_Transmit('$');
-    //Usart_Transmit(xg_1);
-    /*Usart_Transmit(xg_2);
-    Usart_Transmit(yg_1);
-    Usart_Transmit(yg_2);
-    Usart_Transmit(zg_1);
-    Usart_Transmit(zg_2);
-    Usart_Transmit('z');*/
-/*    Usart_Transmit(xa_1);
+    Delay_ms(zaderzhka);
+    //Отладка в матлабе
+    /*Usart_Transmit(xa_1);
     Usart_Transmit(xa_2);
     Usart_Transmit(ya_1);
     Usart_Transmit(ya_2);
@@ -713,16 +695,7 @@ int main()
     Usart_Transmit(ym_2);
     Usart_Transmit(zm_1); 
     Usart_Transmit(zm_2);
-    Usart_Transmit('z');*/
-    /*Usart_Transmit(ya_1); 
-    Usart_Transmit(ya_2);
-    Usart_Transmit(za_1); 
-    Usart_Transmit(za_2);
-    Usart_Transmit('z');*/
-    //Usart_Transmit_str("123456#");
-    //Usart_Transmit_str("\r\n");
-    //Для отладки в матлабе
-/*   uint8_t data;
+    uint8_t data;
     l=0;
     while(!(l==1))
     {
@@ -731,19 +704,13 @@ int main()
       data=USART_ReceiveData(USART1);
       if (data==0x0D) l=1;
       }
-    } */
-   /* set_pos(180);
-    Delay_ms(5000);
-    set_pos(0);
-    Delay_ms(5000);
-    set_pos(90);
-    Delay_ms(5000);*/
-  /*  for (i=0;i<180;i++)
-    {
-    set_pos(i);
-    Delay_ms(100);
     }*/
-    Delay_ms(100);
+  /*  int i=0;
+   for (i=0;i<180;i++)
+   {
+     Delay_ms(100);
+     set_pos_servo3(i);
+   }*/
   }
 
 }
