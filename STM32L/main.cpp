@@ -544,24 +544,44 @@ void transformation(float uncalibrated_values[3])
       result[i] += calibration_matrix[i][j] * uncalibrated_values[j];
   for (int i=0; i<3; ++i) calibrated_values[i] = result[i];
 }
-
+// Характериски привода ухудшают 
 main()
 {
   char str[10]; 
-  int16_t pitch;
-  int16_t roll;
-  int16_t pitch_tmp;
-  int16_t roll_tmp;
-  int16_t yaw;
-  int16_t FilterRoll;
-  int16_t FilterPitch;
-  int16_t FilterYaw;
-  int zaderzhka = 10;
-  double K = 0.9;
+  double servo_angle_pitch_integral = 90;
+  double servo_angle_pitch_pre = 0;
+  double servo_res_pitch = 0;
+  double servo_res_roll = 0;
+  double pitch;
+  double roll;
+  double pitch_tmp;
+  double roll_tmp;
+  double yaw;
+  double FilterRoll;
+  double FilterPitch;
+  double FilterYaw;
+  double tmp1 = 0;
+  double tmp2 = 0;
+  double zaderzhka = 10; //мс 10^-3 c
+  double K = 0.04;
   double angle;
-  float Xcal2;  
-  float Ycal2;
-  float xa,ya,za;
+  double Xcal2;  
+  double Ycal2;
+  double xa,ya,za;
+  int f=0;
+  
+  double PKp = 0.4; //0.4
+  double PKi = 0.0006; //0.0006
+  double PKd = 0.008; //0.005
+  double RKp = 0.35; //0.4
+  double RKi = 0.0006; //0.0006
+  double RKd = 0.008; //0.005
+  double error_pitch = 0;
+  double pre_error_pitch = 0;
+  double integral_pitch = 0;
+  double error_roll = 0;
+  double pre_error_roll = 0;
+  double integral_roll = 0;
   
   /* 
   Настраиваем такирвую частоту процессора от HSI 
@@ -583,11 +603,17 @@ main()
   
   while(1)
   {
+    //Usart_Transmit(I2C_single_read(ADXL345_Address_w,ADXL345_Address_r,0x00));
+ /*   if (f==30){f=0;set_pos_servo1(180);}
+    else
+    {f++;
+    if (f==15) set_pos_servo1(0);
+    }*/
     getAccelValues();
     getGyroValues();
     getMagValues();
-
-    xa =x_a*0.03125;
+    
+    xa =x_a*0.03125; 
     ya =y_a*0.03125;
     za =z_a*0.03125;
     roll_tmp = atan2(ya ,za);
@@ -597,43 +623,79 @@ main()
     FilterRoll = (1-K)*(FilterRoll+x_g*0.07*(zaderzhka/1000))+K*roll;
     FilterPitch = (1-K)*(FilterPitch+(-1)*y_g*0.07*(zaderzhka/1000))+K*pitch;
     roll_angle = (-1)*FilterRoll+90;
-    pitch_angle = FilterPitch+90;   
-    if (roll_angle>90)
+    pitch_angle = FilterPitch+90;  
+    
+    //set_pos_servo1();
+    //servo_angle_pitch_integral+=(-1)*(pitch_angle-90)*0.1*10;
+    //servo_angle_pitch = servo_angle_pitch_integral + (-1)*(pitch_angle-90)*0;
+    //servo_angle_pitch=90-(pitch_angle-90);
+    //servo_angle_pitch +=Kp*(0-(pitch_angle-90));
+    
+    
+    error_pitch = (0-(pitch_angle-90));
+    if (0 < servo_res_pitch < 180){
+      integral_pitch = integral_pitch + error_pitch;
+    }
+    servo_res_pitch += PKp*error_pitch + PKi*integral_pitch*(zaderzhka/1000)+PKd*(error_pitch - pre_error_pitch)/(zaderzhka/1000);   
+    set_pos_servo1(servo_res_pitch);
+    pre_error_pitch = error_pitch;
+    // set_pos_servo2(90);
+   
+    error_roll = (0-(roll_angle-90));
+    if (0 < servo_res_roll < 180){
+      integral_roll = integral_roll + error_roll;
+    }
+    servo_res_roll += RKp*error_roll + RKi*integral_roll*(zaderzhka/1000)+RKd*(error_roll - pre_error_roll)/(zaderzhka/1000);   
+    set_pos_servo2(servo_res_roll);
+    pre_error_roll = error_roll;
+/*
+    // не используем
+ if (roll_angle>90)
     {
-      servo_angle_roll--;
+      servo_angle_roll++;
       set_pos_servo2(servo_angle_roll);
-      Delay_ms(20);
+      //Delay_ms(20);
     } else 
     {
       if (roll_angle<90)
       {
-        servo_angle_roll++;
+        servo_angle_roll--;
         set_pos_servo2(servo_angle_roll);
-        Delay_ms(20);
+        //Delay_ms(20);
       }
-    }        
-    
-    if (pitch_angle>90)
+    }     */   
+   
+  /* if (pitch_angle>90)
     {
-      servo_angle_pitch++;
+     // tmp1 = pitch_angle - 90;
+      servo_angle_pitch--;// servo_angle_pitch - tmp1;
       set_pos_servo1(servo_angle_pitch);
-      Delay_ms(20);
+      //Delay_ms(20);
     } else 
     {
       if (pitch_angle<90)
       {
-        servo_angle_pitch--;
+        //tmp2 =  90 + pitch_angle;
+        servo_angle_pitch++;//= servo_angle_pitch + tmp2;
+        
         set_pos_servo1(servo_angle_pitch);
-        Delay_ms(20);
+        //Delay_ms(20);
       }
-    } //    
-     /// sprintf(str, "%d", tim_angle_pitch);
-      //Usart_Transmit_str(str); 
-     // Usart_Transmit_str("\r\n");
-/*      sprintf(str, "%d", pitch_angle ); 
-      Usart_Transmit_str(str); 
-      Usart_Transmit_str("\r\n");*/
-    float input_data [3] = {(double)x_m,(double)y_m,(double)z_m};
+    }   */ 
+  // sprintf(str, "%d", servo_angle_pitch);
+  //  Usart_Transmit_str(str); 
+    /*
+     Usart_Transmit(servo_res_pitch);
+    Usart_Transmit(roll_angle);
+    Usart_Transmit(roll+90);
+    Usart_Transmit(error_pitch);*/
+ //   Usart_Transmit('z');*/
+     //Usart_Transmit_str("\r\n");
+    //sprintf(str, "%f", y_g*0.07 ); 
+     //Usart_Transmit_str(str);
+    //Usart_Transmit(xg_2);
+     //Usart_Transmit_str("\r\n");
+  /*  float input_data [3] = {(double)x_m,(double)y_m,(double)z_m};
     transformation(input_data);     
     Xcal2 = ((int)calibrated_values[0]*0.92)*cos((float)pitch_tmp) + ((int)calibrated_values[1]*0.92)*sin((float)roll_tmp)*sin((float)pitch_tmp) + ((int)calibrated_values[2]*0.92)*cos((float)roll_tmp)*sin((float)pitch_tmp);
     Ycal2 = ((int)calibrated_values[1]*0.92)*cos((float)roll_tmp) - ((int)calibrated_values[2]*0.92)*sin((float)roll_tmp);
@@ -656,7 +718,7 @@ main()
         servo_angle_yaw++;
         set_pos_servo3(servo_angle_yaw);
       }
-    } 
+    } */
     /*sprintf(str, "%d", FilterYaw ); 
       Usart_Transmit_str(str); 
       Usart_Transmit_str("\r\n");*/
