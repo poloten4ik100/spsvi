@@ -13,12 +13,12 @@
 
 int j=1,l=0;
 
-int servo_angle_pitch = 90;
-int pitch_angle = 0;
-int servo_angle_roll = 90;
-int roll_angle = 0;
-int servo_angle_yaw = 90;
-int yaw_angle = 0;
+double servo_angle_pitch = 90;
+double pitch_angle = 0;
+double servo_angle_roll = 90;
+double roll_angle = 0;
+double servo_angle_yaw = 90;
+double yaw_angle = 0;
 int tim_angle_pitch = 3000;
 int tim_angle_roll = 3000;
 int tim_angle_yaw = 3000;
@@ -104,10 +104,12 @@ int counter=0;
   char str[10]; 
   uint8_t data;
   //double servo_angle_pitch_integral = 90;
-  //double servo_angle_pitch_pre = 0;
-  int32_t servo_res_pitch = 0;
-  int32_t servo_res_roll = 0;
-  int32_t servo_res_yaw = 0;
+  double pre_servo_res_pitch = 0;
+  double pre_servo_res_roll = 0;
+  double pre_servo_res_yaw = 0;
+  double servo_res_pitch = 0;
+  double servo_res_roll = 0;
+  double servo_res_yaw = 0;
   double pitch;
   double roll;
   double pitch_tmp;
@@ -118,7 +120,7 @@ int counter=0;
   double FilterYaw;
   //double tmp1 = 0;
   //double tmp2 = 0;
-  double zaderzhka = 10; //мс 10^-3 c
+  int32_t zaderzhka = 10; //мс 10^-3 c
   double K = 0.04;
   double angle;
   double Xcal2;  
@@ -126,25 +128,28 @@ int counter=0;
   double xa,ya,za;
   int f=0;
   
-  double PKp = 5; //0.4
-  double PKi = 25; //0.0006
-  double PKd = 0.0006; //0.005
-  double RKp = 5; //0.4
-  double RKi = 25; //0.0006
-  double RKd = 0.0006; //0.005
-  double YKp = 1; //0.4
-  double YKi = 0; //0.0006
-  double YKd = 0; //0.005
+  double PKp = 4; //0.4
+  double PKi = 0.3;//0.0006
+  double PKd = 0.02; //0.005
+  double RKp = 4; //0.4
+  double RKi = 0.3; //0.0006
+  double RKd = 0.01; //0.005
+  double YKp = 0.02; //0.4
+  double YKi = 0.4; //0.0006
+  double YKd = 0.01; //0.005
   double error_pitch = 0;
   double pre_error_pitch = 0;
+  double pre_error_pitch2 =0;
   double integral_pitch = 0;
   double error_roll = 0;
   double pre_error_roll = 0;
+  double pre_error_roll2 = 0;
   double integral_roll = 0;
   double error_yaw = 0;
   double pre_error_yaw = 0;
+  double pre_error_yaw2 = 0;
   double integral_yaw = 0;
-
+  int flag = 0;
 
 // Функция передачи символа через USART
 void Usart_Transmit(uint8_t data)
@@ -164,22 +169,69 @@ void Usart_Transmit_str(char* str)
   }
 }
 
-void set_pos_servo1(uint8_t pos) 
+// Функции очистки PID параметров
+void clear_pitch() 
 {
+   pre_error_pitch = 0;
+   pre_servo_res_pitch = 0;
+   pre_error_pitch = 0;
+   pre_error_pitch2 = 0;
+   error_pitch = 0;
+   integral_pitch = 0;
+   servo_res_pitch = 0;
+}
+
+void clear_roll() 
+{
+   pre_error_roll = 0;
+   pre_servo_res_roll = 0;
+   pre_error_roll = 0;
+   pre_error_roll2 = 0;
+   error_roll = 0;
+   integral_roll = 0;
+   servo_res_roll = 0;
+}
+
+void clear_yaw() 
+{
+   pre_error_yaw = 0;
+   pre_servo_res_yaw = 0;
+   pre_error_yaw = 0;
+   pre_error_yaw2 = 0;
+   error_yaw = 0;
+   integral_yaw = 0;
+   servo_res_yaw = 0;
+}
+
+
+void set_pos_servo1(double pos) 
+{
+  if ((pos>=-90) && (pos<=90)){
   uint32_t tmp=(SERVO_180 - SERVO_0) /180 ;
-  TIM2->CCR2 = SERVO_0 + tmp * pos;
+  TIM2->CCR2 = SERVO_0 + tmp * ((int)pos+90);}else
+  {
+    clear_pitch();
+  }
  }
 
-void set_pos_servo2(uint8_t pos) 
+void set_pos_servo2(double pos) 
 {
+  if ((pos>=-90) && (pos<=90)){
   uint32_t tmp=(SERVO_180 - SERVO_0) /180 ;
-  TIM2->CCR3 = SERVO_0 + tmp * pos;
+  TIM2->CCR3 = SERVO_0 + tmp * ((int)pos+90);}else
+  {
+    clear_roll();
+  }
  }
 
-void set_pos_servo3(uint8_t pos) 
+void set_pos_servo3(double pos) 
 {
+  if ((pos>=-180) && (pos<=180)){
   uint32_t tmp=(SERVO_180 - SERVO_0) /180 ;
-  TIM2->CCR4 = SERVO_0 + tmp * pos;
+  TIM2->CCR4 = SERVO_0 + tmp * ((int)pos+90);}else
+  {
+    clear_yaw();
+  }
  }
 
 void set_pos_servo1_tim(int pos) 
@@ -204,6 +256,11 @@ NVIC_InitTypeDef NVIC_InitStructure;
 
 void InitUSART(void)
 {
+    NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+    
   // Инициализация выводов: PA9 - USART1_TX, PA10 - USART1_RX
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE); //Включаем тактирование GPIOА
   // Для выводов PA9, PA10 выбираем альтернативную функцию работы с USART1
@@ -222,20 +279,16 @@ void InitUSART(void)
   GPIO_Init(GPIOA, &GPIO_InitStruct); //Заданные настройки сохраняем в регистрах GPIOА
   // Инициализация USART1
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE); //Включаем тактирование USART1
-  USART_InitStruct.USART_BaudRate = 9600; //Скорость обмена 9600 бод
+  USART_InitStruct.USART_BaudRate = 115200; //Скорость обмена 9600 бод
   USART_InitStruct.USART_WordLength = USART_WordLength_8b; //Длина слова 8 бит
   USART_InitStruct.USART_StopBits = USART_StopBits_1; //1 стоп-бит
   USART_InitStruct.USART_Parity = USART_Parity_No ; //Без проверки четности
   USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None; //Без аппаратного контроля
   USART_InitStruct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx; //Включен передатчик и приемник USART1
   USART_Init(USART1, &USART_InitStruct); //Заданные настройки сохраняем в регистрах USART1
+  USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
   USART_Cmd(USART1, ENABLE); //Включаем USART1
-  
-  NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;//0x0F;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;//0x0F;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
+
 }
 
 void InitI2C(void)
@@ -492,6 +545,22 @@ void Delay_ms(uint32_t ms)
   for (; nCount!=0; nCount--);
 }
 
+
+void TIM_ZAD(void)
+  { 
+    
+     NVIC_SetPriority(TIM3_IRQn, 1); //Приоритет прерывания
+  NVIC_EnableIRQ(TIM3_IRQn); //Разрешаем обработку прерывания от таймера 2
+     //TIM2 init
+  RCC->APB1ENR |= RCC_APB1ENR_TIM3EN; //Подаем тактовые импульсы на таймер 2
+  TIM3->PSC = 15999; //Коэффициент деления 2096 (1 msec)
+  TIM3->ARR = 3000; //Перезагружаемое значение соответствует вызову прерывания через 500 msec
+  TIM3->DIER |= TIM_DIER_UIE; //Разрешаем прерывание при переполнении счетчика
+  TIM3->CR1 |= TIM_CR1_CEN; //Запуск счета   
+  
+    
+  }
+
 void SERVO(void)
   { 
     /*Инициализация GPIOA. Вывод PA1 настраивается для работы с выходом TIM2_CH2*/
@@ -567,7 +636,7 @@ reverse(s);
 //arduino example code for getting the calibrated magnetometer data 
 //calibrated_values[3] is the global array where the calibrated data will be placed
 //calibrated_values[3]: [0]=Xc, [1]=Yc, [2]=Zc
-float calibrated_values[3];   
+double calibrated_values[3];   
 //transformation(float uncalibrated_values[3]) is the function of the magnetometer data correction 
 //uncalibrated_values[3] is the array of the non calibrated magnetometer data
 //uncalibrated_values[3]: [0]=Xnc, [1]=Ync, [2]=Znc
@@ -598,12 +667,87 @@ void transformation(double uncalibrated_values[3])
   for (int i=0; i<3; ++i) calibrated_values[i] = result[i];
 }
 
-#define MAX_STRLEN 12 // this is the maximum string length of our string in characters
-void USART1_IRQHandler(void) {
-	if (USART1->SR & USART_SR_RXNE) {
-		while(!(USART1->SR & USART_SR_TC));
-		Usart_Transmit(USART1->DR);
-	}
+ extern "C" void TIM3_IRQHandler(void) //Функция обработчика прерывания от таймера 3
+  {
+    TIM3->SR &= ~TIM_SR_UIF; //Сбрасываем бит вызова прерывания.
+    flag++;
+  }
+
+extern "C" void USART1_IRQHandler(void)
+{
+   if (USART1->SR & USART_SR_RXNE) 
+    {
+          if((USART1->SR & USART_SR_RXNE)) //Проверяем поступление данных от компьютера
+          {
+            data = USART1->DR; //Считываем принятые данные 
+            if (data!=0x0D)
+            {
+              buf[counter]=data; 
+              counter++;
+            }else
+            {
+              char subStr[3];
+              char param[32];
+              strncpy(subStr, buf+0, 2);
+              memset(param, 0, sizeof(buf));   
+              strncpy(param, buf+2, sizeof(buf));
+               
+              subStr[2] = 0;    
+              //param[sizeof(buf)] = 0;
+              //r-p
+              if (strcmp("RP",subStr)==0)
+              {
+                PKp= atof (param);
+                clear_pitch();
+              }
+              if (strcmp("RI",subStr)==0)
+              {
+                PKi= atof (param);
+                clear_pitch();
+              }
+              if (strcmp("RD",subStr)==0)
+              {
+                PKd= atof (param);
+                clear_pitch();
+              }
+              //p-r
+              if (strcmp("PP",subStr)==0)
+              {
+                RKp= atof (param);
+                clear_roll();
+              }
+              if (strcmp("PI",subStr)==0)
+              {
+                RKi= atof (param);
+                clear_roll();
+              }
+              if (strcmp("PD",subStr)==0)
+              {
+                RKd= atof (param);
+                clear_roll();
+              }
+              //yaw
+              if (strcmp("YP",subStr)==0)
+              {
+                YKp= atof (param);
+                clear_yaw();
+              }
+              if (strcmp("YI",subStr)==0)
+              {
+                YKi= atof (param);
+                clear_yaw();
+              }
+              if (strcmp("YD",subStr)==0)
+              {
+                YKd= atof (param);
+                clear_yaw();
+              }
+              memset(buf, 0, sizeof(buf));
+              counter=0;
+            }
+          }
+    }
+    USART_ClearITPendingBit(USART1,USART_IT_RXNE);
 }
 
 main()
@@ -620,62 +764,23 @@ main()
 
   InitUSART(); 
   SERVO();  
-  Usart_Transmit('j');
   InitI2C();  
   Init_L3G4200D();
   Init_ADXL345();
   Init_MC5883L();
-  //set_pos_servo1(45);
-  //Delay_ms(2000);
-  //Usart_Transmit('f');
-  Usart_Transmit('f');
-  while(1)
-  {
-
-    /*if((USART1->SR & USART_SR_RXNE)) //Проверяем поступление данных от компьютера
-    {
-      data = USART1->DR;
-      Usart_Transmit(data);
-    }*/
-    //Usart_Transmit('0');
-    /*
+  TIM_ZAD();
+  set_pos_servo1(-20);
+  //Delay_ms(3000);
+  
+  while(1){
     
-      if (data!=0x0D)
-      {
-        buf[counter]=data; 
-        counter++;
-      }
-        else
-      {
-        char subStr[3];
-        strncpy(subStr, buf+0, 2);
-        subStr[2] = 0;
-        Usart_Transmit_str(buf+0);
-        Usart_Transmit_str("\r\n");
-        
-        int Num=0;
-        Num = atoi(buf);
-        //set_pos(Num);
-        //TIM2->CCR3 = Num;
-        memset(buf, 0, sizeof(buf));
-        counter=0;
-        Usart_Transmit_str("OK\r\n");
-      }
-    }*/
-     
-    //Usart_Transmit(I2C_single_read(ADXL345_Address_w,ADXL345_Address_r,0x00));
- /*   if (f==30){f=0;set_pos_servo1(180);}
-    else
-    {f++;
-    if (f==15) set_pos_servo1(0);
-    }*/
     getAccelValues();
     getGyroValues();
     getMagValues();
     
     xa =x_a*0.03125; 
-    ya =y_a*0.03125;
-    za =z_a*0.03125;
+    ya =y_a*0.03125-0.5313;
+    za =z_a*0.03125-0.9063;
     roll_tmp = atan2(ya ,za);
     pitch_tmp = atan2(xa ,sqrt(za*za + ya*ya));
     roll = (atan2(ya ,za) * 180) / 3.14;
@@ -685,151 +790,83 @@ main()
     roll_angle = FilterRoll+90; //-1
     pitch_angle = FilterPitch+90;  
     
-    //set_pos_servo1();
-    //servo_angle_pitch_integral+=(-1)*(pitch_angle-90)*0.1*10;
-    //servo_angle_pitch = servo_angle_pitch_integral + (-1)*(pitch_angle-90)*0;
-    //servo_angle_pitch=90-(pitch_angle-90);
-    //servo_angle_pitch +=Kp*(0-(pitch_angle-90));
-    
-    
-   error_pitch = 90-pitch_angle;
-   if ((servo_res_pitch>=45) && (servo_res_pitch<=180)){
-      integral_pitch += error_pitch;
-    }
-    servo_res_pitch = (int)PKp*error_pitch + PKi*integral_pitch*0.01-PKd*(error_pitch - pre_error_pitch)/0.01;  
-    //if (45 <= servo_res_pitch <= 154){
-    if ((servo_res_pitch>=45) && (servo_res_pitch<=180))
-      set_pos_servo1(servo_res_pitch);
-    //}
-    pre_error_pitch = error_pitch;
-    
-  //Usart_Transmit((int)pitch_angle);
-    /* Usart_Transmit((int)pitch_angle);
-    *//* Usart_Transmit((int)error_pitch);*/
-   /*sprintf(str, "%d", (int)pitch_angle ); 
+   if (flag>=0) 
+   {
+     // Новый крутой регулятор. Экономим вычислительные ресурсы    
+     error_pitch = 90-pitch_angle;
+     servo_res_pitch = pre_servo_res_pitch+PKp*(error_pitch-pre_error_pitch) + PKi*(error_pitch+pre_error_pitch)/2+PKd*(error_pitch-2*pre_error_pitch+pre_error_pitch2);//+PKd*y_g*0.07*0.01; 
+     set_pos_servo1(servo_res_pitch);
+     pre_servo_res_pitch = servo_res_pitch;
+     pre_error_pitch = error_pitch;
+     pre_error_pitch2 = pre_error_pitch;
+//   sprintf(str, "%f", FilterPitch); 
+//   Usart_Transmit_str(str);
+//   Usart_Transmit_str("\r");
+    } else 
+    {
+     clear_pitch();
+    } 
+    //RA 
+    Usart_Transmit_str("RA");
+    sprintf(str, "%f", pitch_angle ); 
     Usart_Transmit_str(str);
-    Usart_Transmit_str(" ");
-    sprintf(str, "%d", (int)servo_res_pitch); 
+    Usart_Transmit_str("E");
+    sprintf(str, "%f", error_pitch); 
     Usart_Transmit_str(str);
-    Usart_Transmit_str(" ");
-    sprintf(str, "%d", (int)error_pitch); 
+    Usart_Transmit_str("S");
+    sprintf(str, "%f", servo_res_pitch); 
     Usart_Transmit_str(str);
-    Usart_Transmit_str("\r\n");*/
-    // set_pos_servo2(90);*/
-   
-   error_roll = 90-roll_angle;
-    if ((servo_res_roll>=10) && (servo_res_roll<=170)){
-      integral_roll += error_roll;
-    }
-    servo_res_roll = (int)RKp*error_roll + RKi*integral_roll*0.01+RKd*(error_roll - pre_error_roll)/0.01;  
-    if ((servo_res_roll>=10) && (servo_res_roll<=170)){
-      set_pos_servo2(servo_res_roll);
-    }
+
+    error_roll = 90-roll_angle;
+    servo_res_roll = pre_servo_res_roll+RKp*(error_roll-pre_error_roll) + RKi*(error_roll+pre_error_roll)/2+RKd*(error_roll-2*pre_error_roll+pre_error_roll2); 
+    set_pos_servo2(servo_res_roll);
+    pre_servo_res_roll = servo_res_roll;
     pre_error_roll = error_roll;
+    pre_error_roll2 = pre_error_roll;
+    // PA
+    Usart_Transmit_str("PA");
+    sprintf(str, "%f", roll_angle ); 
+    Usart_Transmit_str(str);
+    Usart_Transmit_str("E");
+    sprintf(str, "%f", error_roll); 
+    Usart_Transmit_str(str);
+    Usart_Transmit_str("S");
+    sprintf(str, "%f", servo_res_roll); 
+    Usart_Transmit_str(str);
     
-/*  sprintf(str, "%d", (int)roll_angle ); 
-    Usart_Transmit_str(str);
-    Usart_Transmit_str(" ");
-    sprintf(str, "%d", (int)servo_res_roll); 
-    Usart_Transmit_str(str);
-    Usart_Transmit_str(" ");
-    sprintf(str, "%d", (int)error_roll); 
-    Usart_Transmit_str(str);
-    Usart_Transmit_str("\r\n");*/
-    // не используем
- /*if (roll_angle>90)
-    {
-      servo_angle_roll++;
-      set_pos_servo2(servo_angle_roll);
-      //Delay_ms(20);
-    } else 
-    {
-      if (roll_angle<90)
-      {
-        servo_angle_roll--;
-        set_pos_servo2(servo_angle_roll);
-        //Delay_ms(20);
-      }
-    }     */
-   
-  /* if (pitch_angle>90)
-    {
-     // tmp1 = pitch_angle - 90;
-      servo_angle_pitch--;// servo_angle_pitch - tmp1;
-      set_pos_servo1(servo_angle_pitch);
-      //Delay_ms(20);
-    } else 
-    {
-      if (pitch_angle<90)
-      {
-        //tmp2 =  90 + pitch_angle;
-        servo_angle_pitch++;//= servo_angle_pitch + tmp2;
-        
-        set_pos_servo1(servo_angle_pitch);
-        //Delay_ms(20);
-      }
-    }   */ 
-  // sprintf(str, "%d", servo_angle_pitch);
-  //  Usart_Transmit_str(str); 
-    /*
-     Usart_Transmit(servo_res_pitch);
-    Usart_Transmit(roll_angle);
-    Usart_Transmit(roll+90);
-    Usart_Transmit(error_pitch);*/
- //   Usart_Transmit('z');*/
-     //Usart_Transmit_str("\r\n");
-    //sprintf(str, "%f", y_g*0.07 ); 
-     //Usart_Transmit_str(str);
-    //Usart_Transmit(xg_2);
-     //Usart_Transmit_str("\r\n");
     double input_data [3] = {(double)x_m,(double)y_m,(double)z_m};
     transformation(input_data);     
     //Xcal2 = ((double)calibrated_values[0]*0.92)*cos((double)pitch_tmp) + ((double)calibrated_values[1]*0.92)*sin((double)roll_tmp)*sin((double)pitch_tmp) + ((double)calibrated_values[2]*0.92)*cos((double)roll_tmp)*sin((double)pitch_tmp);
-    //Ycal2 = ((double)calibrated_values[1]*0.92)*cos((double)roll_tmp) - ((double)calibrated_values[2]*0.92)*sin((double)roll_tmp);
-    Xcal2 = ((double)calibrated_values[0]*0.92)*cos((double)pitch_tmp) + ((double)calibrated_values[1]*0.92)*sin(roll_tmp)*sin(pitch_tmp) + ((double)calibrated_values[2]*0.92)*cos(roll_tmp)*sin(pitch_tmp);
-    Ycal2 = ((double)calibrated_values[1]*0.92)*cos(roll_tmp) - ((double)calibrated_values[2]*0.92)*sin(roll_tmp);
+   // Ycal2 = ((double)calibrated_values[1]*0.92)*cos((double)roll_tmp) - ((double)calibrated_values[2]*0.92)*sin((double)roll_tmp);
+    Xcal2 = (calibrated_values[0]*0.92)*cos(pitch_tmp) + (calibrated_values[1]*0.92)*sin(roll_tmp)*sin(pitch_tmp) + (calibrated_values[2]*0.92)*cos(roll_tmp)*sin(pitch_tmp);
+    Ycal2 = (calibrated_values[1]*0.92)*cos(roll_tmp) - (calibrated_values[2]*0.92)*sin(roll_tmp);
     angle = atan2( -Ycal2, Xcal2 );
+    //angle = atan2( calibrated_values[1], calibrated_values[0]);
     if (angle < 0) 
     angle += 2*3.14;
     if (angle > 2*3.14)
     angle -= 2*3.14;        
-    yaw = (uint16_t)(angle * (180 / 3.14));
-    FilterYaw =(1-K)*(FilterYaw+z_g*0.07*(zaderzhka/1000))+K*yaw;
+    yaw = angle * (180 / 3.14);
+    //FilterYaw =(1-K)*(FilterYaw+z_g*0.07*0.01)+K*yaw;
     
-    if ((FilterYaw>=0) && (FilterYaw<=180)){
-     error_yaw = 90-FilterYaw;
-     if ((servo_res_yaw>=0) && (servo_res_yaw<=180)){
-      integral_yaw += error_yaw;
-    }
-    servo_res_yaw = (int)YKp*error_yaw + YKi*integral_yaw*0.01+YKd*(error_yaw - pre_error_yaw)/0.01;  
-    if ((servo_res_yaw>=0) && (servo_res_yaw<=180)){
-      set_pos_servo3(servo_res_yaw);
-    }
+    
+    error_yaw = 180-yaw;
+    servo_res_yaw = pre_servo_res_yaw+YKp*(error_yaw-pre_error_yaw) + YKi*(error_yaw+pre_error_yaw)/2+YKd*(error_yaw-2*pre_error_yaw+pre_error_yaw2);
+    set_pos_servo3(servo_res_yaw);
+    pre_servo_res_yaw = servo_res_yaw;
     pre_error_yaw = error_yaw;
-    }
+    pre_error_yaw2 = pre_error_yaw;
     
-
-  /*  if (FilterYaw>180)
-    {
-      servo_angle_yaw--;
-      set_pos_servo3(servo_angle_yaw); 
-    } else 
-    {
-      if (FilterYaw<180)
-      {
-        servo_angle_yaw++;
-        set_pos_servo3(servo_angle_yaw);
-      }
-    } */
-   sprintf(str, "%d", (int)FilterYaw ); 
-      Usart_Transmit_str(str); 
-      Usart_Transmit_str(" "); 
-       sprintf(str, "%d", (int)error_yaw ); 
-      Usart_Transmit_str(str); 
-      Usart_Transmit_str(" "); 
-      sprintf(str, "%d", (int)servo_res_yaw); 
-      Usart_Transmit_str(str);       
-      Usart_Transmit_str("\r\n");
+    //YA
+    Usart_Transmit_str("YA");
+    sprintf(str, "%f", yaw ); 
+    Usart_Transmit_str(str);
+    Usart_Transmit_str("E");
+    sprintf(str, "%f", error_yaw); 
+    Usart_Transmit_str(str);
+    Usart_Transmit_str("S");
+    sprintf(str, "%f", servo_res_yaw); 
+    Usart_Transmit_str(str);
 
    /* sprintf(str, "%d ", (int)x_m);
     Usart_Transmit_str(str);
@@ -839,7 +876,7 @@ main()
     Usart_Transmit(',');
     sprintf(str, "%d", (int)z_m);
     Usart_Transmit_str(str);
-    Usart_Transmit_str("\r\n");/*
+    Usart_Transmit_str("\r\n");*/
     // Вывод калиброваных значений*/
    /* float input_data [3] = {(double)x_m,(double)y_m,(double)z_m};
     transformation(input_data);
@@ -852,7 +889,18 @@ main()
     sprintf(str, "%d", (int)calibrated_values[2]);
     Usart_Transmit_str(str);
     Usart_Transmit_str("\r\n");*/
+    //sprintf(str, "%f ", xa);
+    //Usart_Transmit_str(str);
+    /*Usart_Transmit(' ');
+    sprintf(str, "%f", ya);
+    Usart_Transmit_str(str);
+    Usart_Transmit(' ');
+    sprintf(str, "%f", za);
+    Usart_Transmit_str(str);*/
+    //Usart_Transmit_str("\r");
    Delay_ms(zaderzhka);
+    
+   
     //Отладка в матлабе
    /* Usart_Transmit(xa_1);
     Usart_Transmit(xa_2);

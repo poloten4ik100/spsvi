@@ -1,12 +1,14 @@
-"C:\Users\Женя\Desktop\Диплом\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_i2c.c"
+"C:\Users\Женя\Desktop\diplom\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_i2c.c"
 -std=c++98
 -ferror-limit=100
 -I
-C:\Users\Женя\Desktop\Диплом\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\inc
+C:\Users\Женя\Desktop\diplom\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\inc
 -I
-C:\Users\Женя\Desktop\Диплом\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src
+C:\Users\Женя\Desktop\diplom\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src
 -I
-C:\Users\Женя\Desktop\Диплом\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\CMSIS\Device\ST\STM32L1xx\Include
+C:\Users\Женя\Desktop\diplom\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\CMSIS\Device\ST\STM32L1xx\Include
+-I
+C:\Users\Женя\Desktop\diplom\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\CMSIS\Device\ST\STM32L1xx\Source\Templates\iar
 -I
 C:\Program Files (x86)\IAR Systems\Embedded Workbench 6.5\arm\CMSIS\Include
 -I
@@ -16,11 +18,13 @@ C:\Program Files (x86)\IAR Systems\Embedded Workbench 6.5\arm\inc\c
 -I
 C:\Program Files (x86)\IAR Systems\Embedded Workbench 6.5\arm\inc\ecpp
 -I
-C:\Users\Женя\Desktop\Диплом\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\inc
+C:\Users\Женя\Desktop\diplom\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\inc
 -I
-C:\Users\Женя\Desktop\Диплом\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src
+C:\Users\Женя\Desktop\diplom\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src
 -I
-C:\Users\Женя\Desktop\Диплом\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\CMSIS\Device\ST\STM32L1xx\Include
+C:\Users\Женя\Desktop\diplom\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\CMSIS\Device\ST\STM32L1xx\Include
+-I
+C:\Users\Женя\Desktop\diplom\spsvi\STM32L\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\CMSIS\Device\ST\STM32L1xx\Source\Templates\iar
 -I
 C:\Program Files (x86)\IAR Systems\Embedded Workbench 6.5\arm\CMSIS\Include
 -D__CHAR_BITS__=8
@@ -217,8 +221,8 @@ C:\Program Files (x86)\IAR Systems\Embedded Workbench 6.5\arm\CMSIS\Include
 -D__HAS_LOCATED_DECLARATION__=1
 -D__HAS_LOCATED_WITH_INIT__=1
 -D__IAR_COMPILERBASE__=593160
--D__DATE__="May  7 2015"
--D__TIME__="19:58:32"
+-D__DATE__="May 27 2015"
+-D__TIME__="21:05:12"
 -D__STDC__=1
 -D__cplusplus=199711L
 -D__iar_extended_embedded_cplusplus=1

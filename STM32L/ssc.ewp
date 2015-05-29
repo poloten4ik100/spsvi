@@ -300,6 +300,7 @@
           <state>$PROJ_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\inc</state>
           <state>$PROJ_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src</state>
           <state>$PROJ_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\CMSIS\Device\ST\STM32L1xx\Include</state>
+          <state>$PROJ_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\CMSIS\Device\ST\STM32L1xx\Source\Templates\iar</state>
         </option>
         <option>
           <name>CCStdIncCheck</name>
@@ -1843,6 +1844,9 @@
     <name>$PROJ_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\misc.c</name>
   </file>
   <file>
+    <name>$PROJ_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\CMSIS\Device\ST\STM32L1xx\Source\Templates\iar\startup_stm32l1xx_md.s</name>
+  </file>
+  <file>
     <name>$PROJ_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_crc.c</name>
   </file>
   <file>
@@ -1865,6 +1869,9 @@
   </file>
   <file>
     <name>$PROJ_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_usart.c</name>
+  </file>
+  <file>
+    <name>$PROJ_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\CMSIS\Device\ST\STM32L1xx\Source\Templates\system_stm32l1xx.c</name>
   </file>
 </project>
 
