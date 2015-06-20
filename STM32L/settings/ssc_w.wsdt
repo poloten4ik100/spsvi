@@ -12,7 +12,7 @@
           
           
           
-        <Column0>305</Column0><Column1>0</Column1><Column2>1</Column2><Column3>0</Column3></ColumnWidths>
+        <Column0>81</Column0><Column1>0</Column1><Column2>1</Column2><Column3>0</Column3></ColumnWidths>
       <PreferedWindows><Position>1</Position><ScreenPosX>0</ScreenPosX><ScreenPosY>0</ScreenPosY><Windows/></PreferedWindows></Workspace>
       <Build>
         
@@ -24,20 +24,20 @@
     <Windows>
       
       
-    <Wnd1><Tabs><Tab><Identity>TabID-30043-23297</Identity><TabName>Workspace</TabName><Factory>Workspace</Factory><Session><NodeDict><ExpandedNode>ssc</ExpandedNode></NodeDict></Session></Tab></Tabs><SelectedTab>0</SelectedTab></Wnd1><Wnd2><Tabs><Tab><Identity>TabID-20324-26658</Identity><TabName>Build</TabName><Factory>Build</Factory><Session/></Tab><Tab><Identity>TabID-27413-26730</Identity><TabName>Debug Log</TabName><Factory>Debug-Log</Factory><Session/></Tab></Tabs><SelectedTab>0</SelectedTab></Wnd2></Windows>
+    <Wnd0><Tabs><Tab><Identity>TabID-30043-23297</Identity><TabName>Workspace</TabName><Factory>Workspace</Factory><Session><NodeDict><ExpandedNode>ssc</ExpandedNode></NodeDict></Session></Tab></Tabs><SelectedTab>0</SelectedTab></Wnd0><Wnd3><Tabs><Tab><Identity>TabID-20324-26658</Identity><TabName>Build</TabName><Factory>Build</Factory><Session/></Tab><Tab><Identity>TabID-27413-26730</Identity><TabName>Debug Log</TabName><Factory>Debug-Log</Factory><Session/></Tab></Tabs><SelectedTab>0</SelectedTab></Wnd3></Windows>
     <Editor>
       
       
       
       
-    <Pane><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\..\..\..\..\..\Program Files (x86)\IAR Systems\Embedded Workbench 6.5\arm\doc\infocenter\index.ENU.html</Filename></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_rcc.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>977</YPos2><SelStart2>43521</SelStart2><SelEnd2>43521</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_i2c.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>1060</YPos2><SelStart2>39846</SelStart2><SelEnd2>39846</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_sdio.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>0</YPos2><SelStart2>0</SelStart2><SelEnd2>0</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\main.cpp</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>736</YPos2><SelStart2>23699</SelStart2><SelEnd2>23699</SelEnd2></Tab><ActiveTab>4</ActiveTab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
+    <Pane><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\..\..\..\..\..\Program Files (x86)\IAR Systems\Embedded Workbench 6.5\arm\doc\infocenter\index.ENU.html</Filename></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_rcc.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>977</YPos2><SelStart2>43521</SelStart2><SelEnd2>43521</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_i2c.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>1043</YPos2><SelStart2>39570</SelStart2><SelEnd2>39570</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\STM32L1xx_StdPeriph_Lib_V1.3.0\Libraries\STM32L1xx_StdPeriph_Driver\src\stm32l1xx_sdio.c</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>0</YPos2><SelStart2>0</SelStart2><SelEnd2>0</SelEnd2></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\main.cpp</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd><XPos2>0</XPos2><YPos2>618</YPos2><SelStart2>20281</SelStart2><SelEnd2>20281</SelEnd2></Tab><ActiveTab>4</ActiveTab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
     <Positions>
       
       
       
       
       
-    <Top><Row0><Sizes><Toolbar-01009380><key>iaridepm.enu1</key></Toolbar-01009380></Sizes></Row0><Row1><Sizes/></Row1></Top><Left><Row0><Sizes><Wnd1><Rect><Top>-2</Top><Left>-2</Left><Bottom>399</Bottom><Right>326</Right><x>-2</x><y>-2</y><xscreen>415</xscreen><yscreen>-462567</yscreen><sizeHorzCX>303807</sizeHorzCX><sizeHorzCY>-674295917</sizeHorzCY><sizeVertCX>240117</sizeVertCX><sizeVertCY>584548</sizeVertCY></Rect></Wnd1></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd2><Rect><Top>-2</Top><Left>-2</Left><Bottom>242</Bottom><Right>1368</Right><x>-2</x><y>-2</y><xscreen>1370</xscreen><yscreen>244</yscreen><sizeHorzCX>1002928</sizeHorzCX><sizeHorzCY>355685</sizeHorzCY><sizeVertCX>79795</sizeVertCX><sizeVertCY>132653</sizeVertCY></Rect></Wnd2></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
+    <Top><Row0><Sizes><Toolbar-00e89380><key>iaridepm.enu1</key></Toolbar-00e89380></Sizes></Row0></Top><Left><Row0><Sizes><Wnd0><Rect><Top>-2</Top><Left>-2</Left><Bottom>862</Bottom><Right>102</Right><x>-2</x><y>-2</y><xscreen>131</xscreen><yscreen>-69811</yscreen><sizeHorzCX>102344</sizeHorzCX><sizeHorzCY>-74109341</sizeHorzCY><sizeVertCX>81250</sizeVertCX><sizeVertCY>917197</sizeVertCY></Rect></Wnd0></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd3><Rect><Top>-2</Top><Left>-2</Left><Bottom>35</Bottom><Right>1282</Right><x>-2</x><y>-2</y><xscreen>1284</xscreen><yscreen>37</yscreen><sizeHorzCX>1003125</sizeHorzCX><sizeHorzCY>39278</sizeHorzCY><sizeVertCX>26563</sizeVertCX><sizeVertCY>14862</sizeVertCY></Rect></Wnd3></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
   </Desktop>
 </Workspace>
 

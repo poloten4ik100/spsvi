@@ -54,6 +54,7 @@ uint8_t ADXL345_Address_w = 0xA6;
 
 #define POWER_CTL 0x2D
 #define DATA_FORMAT 0x31
+#define BW_RATE 0x2C
 
 int16_t x_a;
 int16_t y_a;
@@ -128,15 +129,15 @@ int counter=0;
   double xa,ya,za;
   int f=0;
   
-  double PKp = 4; //0.4
-  double PKi = 0.3;//0.0006
-  double PKd = 0.02; //0.005
-  double RKp = 4; //0.4
-  double RKi = 0.3; //0.0006
-  double RKd = 0.01; //0.005
-  double YKp = 0.02; //0.4
-  double YKi = 0.4; //0.0006
-  double YKd = 0.01; //0.005
+  double PKp = 1.24; //0.4
+  double PKi = 0.38;//0.0006
+  double PKd = 0.34; //0.005
+  double RKp = 1.24; //0.4
+  double RKi = 0.38; //0.0006
+  double RKd = 0.34; //0.005
+  double YKp = 0.35; //0.4
+  double YKi = 0.1; //0.0006
+  double YKd = 0.35; //0.005
   double error_pitch = 0;
   double pre_error_pitch = 0;
   double pre_error_pitch2 =0;
@@ -150,7 +151,6 @@ int counter=0;
   double pre_error_yaw2 = 0;
   double integral_yaw = 0;
   int flag = 0;
-
 // Функция передачи символа через USART
 void Usart_Transmit(uint8_t data)
 {
@@ -161,8 +161,7 @@ void Usart_Transmit(uint8_t data)
 // Функция передачи строки через USART
 void Usart_Transmit_str(char* str)
 {
-  uint8_t i=0;
-  while(str[i])
+  uint8_t i=0;  while(str[i])
   {
     Usart_Transmit(str[i]);
     i++;
@@ -366,19 +365,20 @@ void Init_ADXL345(void)
   I2C_single_write(ADXL345_Address_w,POWER_CTL,8);
   // left-justified, +/-16g, FULL_RES 
   I2C_single_write(ADXL345_Address_w,DATA_FORMAT,0x0b);
+  //I2C_single_write(ADXL345_Address_w,BW_RATE,0x0b);
 }
 
 // Гироскоп L3G4200D
 void Init_L3G4200D(void)
 {
   // CTRL_REG1 (00001111) Скорость оцифровки сигнала 100Гц (Cut-Off 12.5), все оси включены, Power Down - нормальный режим
-  I2C_single_write(L3G4200D_Address_w,CTRL_REG1,0x0f); 
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG1,0x2f); 
   // CTRL_REG2 (00000000) Нормальный режим ФВЧ (сброс чтением HP_RESET_FILTER), частота среза 8Гц (ODR=100Гц)
-  I2C_single_write(L3G4200D_Address_w,CTRL_REG2,0x00);
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG2,0x24);
   // CTRL_REG3 (00001000) Вывод состояния Data Ready на DRDY/INT2
   I2C_single_write(L3G4200D_Address_w,CTRL_REG3,0x00);
     // CTRL_REG4 (00001000)  Выбор полной шкалы 2000 dps
-  I2C_single_write(L3G4200D_Address_w,CTRL_REG4,0x30);
+  I2C_single_write(L3G4200D_Address_w,CTRL_REG4,0x10);
     // CTRL_REG5 (00001000)  откл фильтр фвч и че-то еще
   I2C_single_write(L3G4200D_Address_w,CTRL_REG5,0x00);
 }
@@ -633,7 +633,7 @@ s[i] = '\0';
 reverse(s);
 }
 
-//arduino example code for getting the calibrated magnetometer data 
+// Выпрямляем данные с магнитометра, калибруем...
 //calibrated_values[3] is the global array where the calibrated data will be placed
 //calibrated_values[3]: [0]=Xc, [1]=Yc, [2]=Zc
 double calibrated_values[3];   
@@ -769,7 +769,8 @@ main()
   Init_ADXL345();
   Init_MC5883L();
   TIM_ZAD();
-  set_pos_servo1(-20);
+  set_pos_servo1(-30);
+  //Usart_Transmit_str("SSkS=>");
   //Delay_ms(3000);
   
   while(1){
@@ -777,16 +778,19 @@ main()
     getAccelValues();
     getGyroValues();
     getMagValues();
-    
-    xa =x_a*0.03125; 
-    ya =y_a*0.03125-0.5313;
-    za =z_a*0.03125-0.9063;
-    roll_tmp = atan2(ya ,za);
-    pitch_tmp = atan2(xa ,sqrt(za*za + ya*ya));
-    roll = (atan2(ya ,za) * 180) / 3.14;
+ 
+    //xa =x_a*0.0039; 
+    //ya =y_a*0.0039;
+    //za =z_a*0.0039;
+    xa = (x_a *0.0039-(-0.01035))/0.99265;
+    ya = (y_a  *0.0039-0.0402)/1.0067;
+    za = (z_a *0.00390-0.10525)/0.97225;
+    //roll_tmp = atan2(ya ,za);
+    //pitch_tmp = atan2(xa ,sqrt(za*za + ya*ya));
+    roll = (atan2(ya ,sqrt(za*za + xa*xa)) * 180) / 3.14;
     pitch = (atan2(xa ,sqrt(za*za + ya*ya)) * 180) / 3.14;
-    FilterRoll = (1-K)*(FilterRoll+x_g*0.07*0.01)+K*roll;
-    FilterPitch = (1-K)*(FilterPitch+(-1)*y_g*0.07*0.01)+K*pitch; //-1
+    FilterRoll = (1-K)*(FilterRoll+(x_g*0.0175 + 0.3705)*0.01)+K*roll;
+    FilterPitch = (1-K)*(FilterPitch+(-1)*(y_g*0.0175 + 0.3705)*0.01)+K*pitch; //-1
     roll_angle = FilterRoll+90; //-1
     pitch_angle = FilterPitch+90;  
     
@@ -794,20 +798,20 @@ main()
    {
      // Новый крутой регулятор. Экономим вычислительные ресурсы    
      error_pitch = 90-pitch_angle;
-     servo_res_pitch = pre_servo_res_pitch+PKp*(error_pitch-pre_error_pitch) + PKi*(error_pitch+pre_error_pitch)/2+PKd*(error_pitch-2*pre_error_pitch+pre_error_pitch2);//+PKd*y_g*0.07*0.01; 
+     servo_res_pitch = pre_servo_res_pitch+PKp*(error_pitch-pre_error_pitch)+ PKi*(error_pitch+pre_error_pitch)/2+PKd*(y_g*0.0175 + 0.3705)*0.01; //PKd*(error_pitch-2*pre_error_pitch+pre_error_pitch2); //
      set_pos_servo1(servo_res_pitch);
      pre_servo_res_pitch = servo_res_pitch;
      pre_error_pitch = error_pitch;
      pre_error_pitch2 = pre_error_pitch;
-//   sprintf(str, "%f", FilterPitch); 
-//   Usart_Transmit_str(str);
-//   Usart_Transmit_str("\r");
+ sprintf(str, "%f", FilterPitch); 
+ Usart_Transmit_str(str);
+ Usart_Transmit_str("\r");
     } else 
     {
      clear_pitch();
     } 
     //RA 
-    Usart_Transmit_str("RA");
+    /*Usart_Transmit_str("RA");
     sprintf(str, "%f", pitch_angle ); 
     Usart_Transmit_str(str);
     Usart_Transmit_str("E");
@@ -815,16 +819,16 @@ main()
     Usart_Transmit_str(str);
     Usart_Transmit_str("S");
     sprintf(str, "%f", servo_res_pitch); 
-    Usart_Transmit_str(str);
+    Usart_Transmit_str(str);*/
 
     error_roll = 90-roll_angle;
-    servo_res_roll = pre_servo_res_roll+RKp*(error_roll-pre_error_roll) + RKi*(error_roll+pre_error_roll)/2+RKd*(error_roll-2*pre_error_roll+pre_error_roll2); 
+    servo_res_roll = pre_servo_res_roll+RKp*(error_roll-pre_error_roll) + RKi*(error_roll+pre_error_roll)/2+(-1)*RKd*(x_g*0.0175 + 0.3705)*0.01;//RKd*(error_roll-2*pre_error_roll+pre_error_roll2); 
     set_pos_servo2(servo_res_roll);
     pre_servo_res_roll = servo_res_roll;
     pre_error_roll = error_roll;
     pre_error_roll2 = pre_error_roll;
     // PA
-    Usart_Transmit_str("PA");
+    /*Usart_Transmit_str("PA");
     sprintf(str, "%f", roll_angle ); 
     Usart_Transmit_str(str);
     Usart_Transmit_str("E");
@@ -832,8 +836,8 @@ main()
     Usart_Transmit_str(str);
     Usart_Transmit_str("S");
     sprintf(str, "%f", servo_res_roll); 
-    Usart_Transmit_str(str);
-    
+    Usart_Transmit_str(str);*/
+    /*
     double input_data [3] = {(double)x_m,(double)y_m,(double)z_m};
     transformation(input_data);     
     //Xcal2 = ((double)calibrated_values[0]*0.92)*cos((double)pitch_tmp) + ((double)calibrated_values[1]*0.92)*sin((double)roll_tmp)*sin((double)pitch_tmp) + ((double)calibrated_values[2]*0.92)*cos((double)roll_tmp)*sin((double)pitch_tmp);
@@ -851,14 +855,14 @@ main()
     
     
     error_yaw = 180-yaw;
-    servo_res_yaw = pre_servo_res_yaw+YKp*(error_yaw-pre_error_yaw) + YKi*(error_yaw+pre_error_yaw)/2+YKd*(error_yaw-2*pre_error_yaw+pre_error_yaw2);
+    servo_res_yaw = pre_servo_res_yaw+YKp*(error_yaw-pre_error_yaw) + YKi*(error_yaw+pre_error_yaw)/2+(-1)*YKd*z_g*0.07*0.01;//+YKd*(error_yaw-2*pre_error_yaw+pre_error_yaw2);
     set_pos_servo3(servo_res_yaw);
     pre_servo_res_yaw = servo_res_yaw;
     pre_error_yaw = error_yaw;
-    pre_error_yaw2 = pre_error_yaw;
+    pre_error_yaw2 = pre_error_yaw;*/
     
     //YA
-    Usart_Transmit_str("YA");
+    /*Usart_Transmit_str("YA");
     sprintf(str, "%f", yaw ); 
     Usart_Transmit_str(str);
     Usart_Transmit_str("E");
@@ -866,7 +870,7 @@ main()
     Usart_Transmit_str(str);
     Usart_Transmit_str("S");
     sprintf(str, "%f", servo_res_yaw); 
-    Usart_Transmit_str(str);
+    Usart_Transmit_str(str);*/
 
    /* sprintf(str, "%d ", (int)x_m);
     Usart_Transmit_str(str);
@@ -898,11 +902,8 @@ main()
     sprintf(str, "%f", za);
     Usart_Transmit_str(str);*/
     //Usart_Transmit_str("\r");
-   Delay_ms(zaderzhka);
-    
-   
-    //Отладка в матлабе
-   /* Usart_Transmit(xa_1);
+      //Отладка в матлабе
+ /*  Usart_Transmit(xa_1);
     Usart_Transmit(xa_2);
     Usart_Transmit(ya_1);
     Usart_Transmit(ya_2);
@@ -912,11 +913,12 @@ main()
     Usart_Transmit(xg_1);  
     Usart_Transmit(xg_2);
     Usart_Transmit(yg_1);  
-    Usart_Transmit(yg_2);*/
-    /*Usart_Transmit(zg_1);  
-    Usart_Transmit(zg_2);
-   
-    Usart_Transmit(xm_1);  
+    Usart_Transmit(yg_2);
+    Usart_Transmit(zg_1);  
+    Usart_Transmit(zg_2);*/
+    
+   Delay_ms(zaderzhka); 
+    /*Usart_Transmit(xm_1);  
     Usart_Transmit(xm_2);
     Usart_Transmit(ym_1);  
     Usart_Transmit(ym_2);
