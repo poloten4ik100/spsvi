@@ -1,0 +1,78 @@
+object Form1: TForm1
+  Left = 0
+  Top = 0
+  Caption = #1059#1087#1088#1072#1074#1083#1103#1083#1082#1072' spsvi'
+  ClientHeight = 399
+  ClientWidth = 681
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  Font.Style = []
+  OldCreateOrder = False
+  PixelsPerInch = 96
+  TextHeight = 13
+  object PageControl1: TPageControl
+    Left = 8
+    Top = 8
+    Width = 665
+    Height = 383
+    ActivePage = TabSheet1
+    TabOrder = 0
+    object TabSheet1: TTabSheet
+      Caption = #1054#1089#1085#1086#1074#1085#1086#1077
+      ExplicitLeft = 0
+      object GroupBox1: TGroupBox
+        Left = 3
+        Top = 3
+        Width = 633
+        Height = 190
+        Caption = 'PID'
+        TabOrder = 0
+        object Label1: TLabel
+          Left = 67
+          Top = 32
+          Width = 7
+          Height = 13
+          Caption = #1055
+        end
+        object Label2: TLabel
+          Left = 67
+          Top = 81
+          Width = 7
+          Height = 13
+          Caption = #1048
+        end
+        object Label3: TLabel
+          Left = 66
+          Top = 128
+          Width = 8
+          Height = 13
+          Caption = #1044
+        end
+        object TrackBar1: TTrackBar
+          Left = 80
+          Top = 32
+          Width = 513
+          Height = 33
+          TabOrder = 0
+        end
+        object TrackBar2: TTrackBar
+          Left = 80
+          Top = 81
+          Width = 513
+          Height = 41
+          TabOrder = 1
+        end
+        object TrackBar3: TTrackBar
+          Left = 80
+          Top = 128
+          Width = 513
+          Height = 33
+          TabOrder = 2
+        end
+      end
+    end
+  end
+end
